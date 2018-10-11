@@ -196,9 +196,9 @@ if(SERVER) then
   end)
 end
 
+-- Send notification to client that something happened
 function TOOL:NotifyPlayer(sText, sType, vRet)
-  if(SERVER) then -- Send notification to client that something happened
-    local mePly = self:GetOwner()
+  if(SERVER) then local mePly = self:GetOwner()
     mePly:SendLua("GAMEMODE:AddNotify(\""..sText.."\", NOTIFY_"..sType..", 6)")
     mePly:SendLua("surface.PlaySound(\"ambient/water/drip"..math.random(1, 4)..".wav\")")
   end; return vRet
@@ -210,9 +210,9 @@ end
 
 local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
   local tT = list.GetForEdit(gsLisp.."type") -- No edit though just read it
-  local iT = math.Clamp(tonumber(vT or 1), 1, #tT)
+  local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
   local tN = list.GetForEdit(gsLisp..tT[iT]) -- No edit though same here
-  local iN = math.Clamp(tonumber(vN or 1), 1, #tN)
+  local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
   return tostring(tN[iN] or "")
 end
 
