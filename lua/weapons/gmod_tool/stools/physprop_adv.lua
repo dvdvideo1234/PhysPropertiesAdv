@@ -1,5 +1,5 @@
 local gsTool = "physprop_adv"
-local gsLisp = "physicsmaterialsadv_"
+local gsLisp = "physics_material_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
@@ -7,7 +7,7 @@ local gsInvm = "N/A"
 local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
-local gnTacn = TEXT_ALIGN_CENTER 
+local gnTacn = TEXT_ALIGN_CENTER
 
 TOOL.Category = "Construction"
 TOOL.Name = "Physical Properties Adv"
@@ -17,7 +17,7 @@ TOOL.ClientConVar = {
   [ "material_type"  ] = 1,
   [ "material_name"  ] = 1,
   [ "material_draw"  ] = 1,
-  [ "material_cash"  ] = 1
+  [ "material_cash"  ] = gsInvm
 }
 
 -- This list contains surface property types and it is used to index property name lists
@@ -143,6 +143,28 @@ list.Add(gsLisp.."manufactured", "glass"                  )
 list.Add(gsLisp.."manufactured", "glassbottle"            )
 list.Add(gsLisp.."manufactured", "combine_glass"          )
 
+if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
+local tF = file.Find(gsTool.."/*.txt") -- Search for text files
+if(tF and tF[1]) then -- At least one file present
+  local sR, sF, sE = "rb", (gsTool.."/%s.txt"), "%.txt" -- Path format
+  local sT, sM, sP, sD = (gsLisp.."type"), "*line", "%w+", "DATA"
+  for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
+    -- File names becomes physical properties type
+    if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
+    local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
+    if(fT) then local sL = fT:Read(sM) -- Process the line
+      while(sL) do sL = sL:Trim() -- Avoid putting spaces
+        -- Every separate word is written to the list
+        if(sL ~= "" or sL:sub(1,1) ~= "#") then
+          for sW in sL:gmatch(sP) do list.Add(gsLisp..sN, sW) end
+          -- When skip the commented lines
+        end; sL = fT:Read(sM) -- Read the next line
+      end -- Additional type is processed from descriptor
+    else ErrorNoHalt(gsTool..": "..tostring(fE)) end
+  end -- All the file type descriptors are processed
+end
+
+
 if(CLIENT) then
   TOOL.Information = {
     { name = "info", stage = 1},
@@ -165,7 +187,7 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".gravity_toggle_con", "Enable gravity")
   language.Add("tool."..gsTool..".gravity_toggle"    , "When checked turns enables the gravity for an entity")
   language.Add("tool."..gsTool..".material_draw_con" , "Enable material draw")
-  language.Add("tool."..gsTool..".material_draw"     , "Show trace entity surface material")  
+  language.Add("tool."..gsTool..".material_draw"     , "Show trace entity surface material")
 end
 
 if(SERVER) then
@@ -207,17 +229,20 @@ function TOOL:CheckButton(iIn)
   return (bit.band(cmdPress:GetButtons(),iIn) ~= 0)
 end
 
+function TOOL:GetGravity()
+  return ((self:GetClientNumber("gravity_toggle") or 0) ~= 0)
+end
+
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
-  -- Make sure we don mot apply custom physical properties on the world surface
+  -- Make sure we do not apply custom physical properties on the world surface
   local trEnt, trBon = tr.Entity, tr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer() or trEnt:IsWorld()) then return false end
-  -- Make sure there's a physics object to manipulate
+  -- Make sure there is a physics object to manipulate
   if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then return false end
-  local mePly, matprop = self:GetOwner()
-  local gravity = (self:GetClientNumber("gravity_toggle") == 1)
+  local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
   if(self:CheckButton(IN_USE)) then matprop = self:GetMaterialCash()
   else matprop = getMaterialInfo(self:GetClientNumber("material_type"),
                                  self:GetClientNumber("material_name")) end
