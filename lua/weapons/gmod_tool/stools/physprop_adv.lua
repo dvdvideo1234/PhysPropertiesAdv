@@ -8,6 +8,7 @@ local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
+local varLng = GetConVar("gmod_language")
 
 TOOL.Category = "Construction"
 TOOL.Name = "Physical Properties Adv"
@@ -52,6 +53,7 @@ if(CLIENT) then
     { name = "right" },
     { name = "reload"}
   }
+  -- Default translation string descriptions ( always english )
   language.Add("tool."..gsTool..".name"              , "Physics Properties Adv")
   language.Add("tool."..gsTool..".desc"              , "Advanced and extended version of the original physics properties tool")
   language.Add("tool."..gsTool..".left"              , "Apply the selected physical property")
@@ -64,9 +66,26 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".material_name"     , "Select material name from the ones listed here")
   language.Add("tool."..gsTool..".material_name_def" , "Select name...")
   language.Add("tool."..gsTool..".gravity_toggle_con", "Enable gravity")
-  language.Add("tool."..gsTool..".gravity_toggle"    , "When checked turns enables the gravity for an entity")
+  language.Add("tool."..gsTool..".gravity_toggle"    , "When checked enables the gravity for an entity")
   language.Add("tool."..gsTool..".material_draw_con" , "Enable material draw")
   language.Add("tool."..gsTool..".material_draw"     , "Show trace entity surface material")
+  -- Override translations file
+  local sT = varLng:GetString()
+  if(sT ~= "en") then local kF = ("tool."..gsTool..".%s")
+    local sF, sR, nL = ("%s/lang/%s.txt"), ("*line"), 0
+    local fT, sE = file.Open(sF:format(gsTool,sT),"rb","DATA")
+    if(fT) then local sL = fT:Read(sR)
+      while(sL) do sL, nL = sL:Trim(), (nL + 1)
+        if(sL == "" or sL:Sub(1,1) = "#") then
+          local nS, nE = sL:find("[^%s]+%s+"); if(not (nS and nE)) then
+            ErrorNoHalt(gsTool..": Translate("..sT..") line"..tostring(nL)) end
+          local sK = sL:sub(nS, nE):Trim()
+          local sV = sL:sub(nE, -1):Trim()
+          language.Add(kF:format(sK), sV)
+        end; sL = fT:Read(sR)
+      end
+    else print(gsTool..": "..tostring(fE)) end
+  end
 end
 
 if(SERVER) then
