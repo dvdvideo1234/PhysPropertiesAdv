@@ -1,0 +1,8 @@
+default
+default_silent
+floatingstandable
+item
+ladder
+no_decal
+player
+player_control_clip

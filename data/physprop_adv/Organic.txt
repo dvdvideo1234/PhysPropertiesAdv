@@ -1,0 +1,8 @@
+alienflesh
+antlion
+armorflesh
+bloodyflesh
+flesh
+foliage
+watermelon
+zombieflesh

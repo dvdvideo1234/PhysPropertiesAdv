@@ -1,0 +1,8 @@
+dirt
+grass
+gravel
+mud
+quicksand
+sand
+slipperyslime
+antlionsand

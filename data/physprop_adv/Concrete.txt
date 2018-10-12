@@ -1,0 +1,5 @@
+brick
+concrete
+concrete_block
+gravel
+rock

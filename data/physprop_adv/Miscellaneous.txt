@@ -1,0 +1,5 @@
+carpet
+ceiling_tile
+computer
+pottery
+

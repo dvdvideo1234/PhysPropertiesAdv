@@ -1,0 +1,6 @@
+wood
+Wood_Box
+Wood_Furniture
+Wood_Plank
+Wood_Panel
+Wood_Solid
