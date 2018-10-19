@@ -39,7 +39,7 @@ if(tF and tF[1]) then -- At least one file present
           for sW in sL:gmatch(sP) do list.Add(gsLisp..sN, sW) end
           -- When skip the commented lines
         end; sL = fT:Read(sM) -- Read the next line
-      end -- Additional type is processed from descriptor
+      end; fT:Close() -- Additional type is processed from descriptor
     else ErrorNoHalt(gsTool..": "..tostring(fE)) end
   end -- All the file type descriptors are processed
 end
@@ -83,7 +83,7 @@ if(CLIENT) then
           local sV = sL:sub(nE, -1):Trim()
           language.Add(kF:format(sK), sV)
         end; sL = fT:Read(sR)
-      end
+      end; fT:Close()
     else print(gsTool..": "..tostring(fE)) end
   end
 end
