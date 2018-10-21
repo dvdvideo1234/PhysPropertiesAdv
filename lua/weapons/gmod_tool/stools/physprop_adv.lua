@@ -9,6 +9,9 @@ local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
+local function logStatus(...)
+  print(gsTool..": ", ...)
+end
 
 TOOL.Category = "Construction"
 TOOL.Name = "Physical Properties Adv"
@@ -24,26 +27,26 @@ TOOL.ClientConVar = {
 table.Empty(list.GetForEdit(gsLisp.."type"))
 
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-local tF = file.Find(gsTool.."/*.txt") -- Search for text files
+local tF = file.Find(gsTool.."/*.txt","DATA") -- Search for text files
 if(tF and tF[1]) then -- At least one file present
   local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
   local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%w+"), ("DATA")
   for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
-    -- File names becomes physical properties type
-    if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
+    if(not list.Contains(sT, sN)) then -- File names becomes physical properties type
+      logStatus(sN); list.Add(sT, sN) end
     local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
-    if(fT) then local sL = fT:Read(sM) -- Process the line
+    if(fT) then local sL = fT:ReadLine(sM) -- Process the line
       while(sL) do sL = sL:Trim() -- Avoid putting spaces
         -- Every separate word is written to the list
         if(sL ~= "" or sL:sub(1,1) ~= "#") then
-          for sW in sL:gmatch(sP) do list.Add(gsLisp..sN, sW) end
-          -- When skip the commented lines
-        end; sL = fT:Read(sM) -- Read the next line
+          for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
+            if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
+          end -- When skip the commented lines
+        end; sL = fT:ReadLine(sM) -- Read the next line
       end; fT:Close() -- Additional type is processed from descriptor
     else ErrorNoHalt(gsTool..": "..tostring(fE)) end
   end -- All the file type descriptors are processed
 end
-
 
 if(CLIENT) then
   TOOL.Information = {
@@ -54,38 +57,32 @@ if(CLIENT) then
     { name = "reload"}
   }
   -- Default translation string descriptions ( always english )
-  language.Add("tool."..gsTool..".name"              , "Physics Properties Adv")
-  language.Add("tool."..gsTool..".desc"              , "Advanced and extended version of the original physics properties tool")
-  language.Add("tool."..gsTool..".left"              , "Apply the selected physical property")
-  language.Add("tool."..gsTool..".right"             , "Cache the selected physical property")
-  language.Add("tool."..gsTool..".right_use"         , "Cache the applied physical property")
-  language.Add("tool."..gsTool..".reload"            , "Reset original physical property")
-  language.Add("tool."..gsTool..".left_use"          , "Apply cached physical property")
-  language.Add("tool."..gsTool..".material_type"     , "Select material type from the ones listed here")
-  language.Add("tool."..gsTool..".material_type_def" , "Select type...")
-  language.Add("tool."..gsTool..".material_name"     , "Select material name from the ones listed here")
-  language.Add("tool."..gsTool..".material_name_def" , "Select name...")
-  language.Add("tool."..gsTool..".gravity_toggle_con", "Enable gravity")
-  language.Add("tool."..gsTool..".gravity_toggle"    , "When checked enables the gravity for an entity")
-  language.Add("tool."..gsTool..".material_draw_con" , "Enable material draw")
-  language.Add("tool."..gsTool..".material_draw"     , "Show trace entity surface material")
+  local tTb = {
+    ["name"              ] =  "Physics Properties Adv",
+    ["desc"              ] =  "Advanced and extended version of the original physics properties tool",
+    ["left"              ] =  "Apply the selected physical property",
+    ["right"             ] =  "Cache the selected physical property",
+    ["right_use"         ] =  "Cache the applied physical property",
+    ["reload"            ] =  "Reset original physical property",
+    ["left_use"          ] =  "Apply cached physical property",
+    ["material_type"     ] =  "Select material type from the ones listed here",
+    ["material_type_def" ] =  "Select type...",
+    ["material_name"     ] =  "Select material name from the ones listed here",
+    ["material_name_def" ] =  "Select name...",
+    ["gravity_toggle_con"] =  "Enable gravity",
+    ["gravity_toggle"    ] =  "When checked enables the gravity for an entity",
+    ["material_draw_con" ] =  "Enable material draw",
+    ["material_draw"     ] =  "Show trace entity surface material"
+ }
   -- Override translations file
-  local sT = varLng:GetString()
-  if(sT ~= "en") then local kF = ("tool."..gsTool..".%s")
-    local sF, sR, nL = ("%s/lang/%s.txt"), ("*line"), 0
-    local fT, sE = file.Open(sF:format(gsTool,sT),"rb","DATA")
-    if(fT) then local sL = fT:Read(sR)
-      while(sL) do sL, nL = sL:Trim(), (nL + 1)
-        if(sL == "" or sL:Sub(1,1) = "#") then
-          local nS, nE = sL:find("[^%s]+%s+"); if(not (nS and nE)) then
-            ErrorNoHalt(gsTool..": Translate("..sT..") line"..tostring(nL)) end
-          local sK = sL:sub(nS, nE):Trim()
-          local sV = sL:sub(nE, -1):Trim()
-          language.Add(kF:format(sK), sV)
-        end; sL = fT:Read(sR)
-      end; fT:Close()
-    else print(gsTool..": "..tostring(fE)) end
-  end
+  local kF = ("tool."..gsTool..".%s")
+  local sT = varLng:GetString(); logStatus("lang", sT)
+  if(sT ~= "en") then
+    local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
+    local bS, tTo = pcall(fT); if(bS) then
+      for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
+    else ErrorNoHalt(gsTool..": "..tostring(tTo)) end
+  end; for key, val in pairs(tTb) do language.Add(kF:format(key), val) end
 end
 
 if(SERVER) then
