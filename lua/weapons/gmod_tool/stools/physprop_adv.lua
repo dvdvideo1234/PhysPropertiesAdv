@@ -9,46 +9,14 @@ local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
+
 local function logStatus(...)
   print(gsTool..": ", ...)
 end
 
-TOOL.Category = "Construction"
-TOOL.Name = "Physical Properties Adv"
-
-TOOL.ClientConVar = {
-  [ "gravity_toggle" ] = 1,
-  [ "material_type"  ] = 1,
-  [ "material_name"  ] = 1,
-  [ "material_draw"  ] = 1,
-  [ "material_cash"  ] = gsInvm
-}
-
-table.Empty(list.GetForEdit(gsLisp.."type"))
-
-if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-local tF = file.Find(gsTool.."/*.txt","DATA") -- Search for text files
-if(tF and tF[1]) then -- At least one file present
-  local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
-  local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%w+"), ("DATA")
-  for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
-    if(not list.Contains(sT, sN)) then -- File names becomes physical properties type
-      logStatus(sN); list.Add(sT, sN) end
-    local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
-    if(fT) then local sL = fT:ReadLine(sM) -- Process the line
-      while(sL) do sL = sL:Trim() -- Avoid putting spaces
-        -- Every separate word is written to the list
-        if(sL ~= "" or sL:sub(1,1) ~= "#") then
-          for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
-            if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
-          end -- When skip the commented lines
-        end; sL = fT:ReadLine(sM) -- Read the next line
-      end; fT:Close() -- Additional type is processed from descriptor
-    else ErrorNoHalt(gsTool..": "..tostring(fE)) end
-  end -- All the file type descriptors are processed
-end
-
 if(CLIENT) then
+  language.Add("tool."..gsTool..".category", "Construction")
+  
   TOOL.Information = {
     { name = "info", stage = 1},
     { name = "left"  },
@@ -83,6 +51,43 @@ if(CLIENT) then
       for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
     else ErrorNoHalt(gsTool..": "..tostring(tTo)) end
   end; for key, val in pairs(tTb) do language.Add(kF:format(key), val) end
+end
+
+TOOL.ClientConVar = {
+  [ "gravity_toggle" ] = 1,
+  [ "material_type"  ] = 1,
+  [ "material_name"  ] = 1,
+  [ "material_draw"  ] = 1,
+  [ "material_cash"  ] = gsInvm
+}
+
+TOOL.Category   = language.GetPhrase and language.GetPhrase("tool."..gsTool..".category")
+TOOL.Name       = language.GetPhrase and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Command    = nil -- Command on click (nil for default)
+TOOL.ConfigName = nil -- Configure file name (nil for default)
+
+table.Empty(list.GetForEdit(gsLisp.."type"))
+
+if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
+local tF = file.Find(gsTool.."/*.txt","DATA") -- Search for text files
+if(tF and tF[1]) then -- At least one file present
+  local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
+  local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%w+"), ("DATA")
+  for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
+    if(not list.Contains(sT, sN)) then -- File names becomes physical properties type
+      logStatus(sN); list.Add(sT, sN) end
+    local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
+    if(fT) then local sL = fT:ReadLine(sM) -- Process the line
+      while(sL) do sL = sL:Trim() -- Avoid putting spaces
+        -- Every separate word is written to the list
+        if(sL ~= "" or sL:sub(1,1) ~= "#") then
+          for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
+            if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
+          end -- When skip the commented lines
+        end; sL = fT:ReadLine(sM) -- Read the next line
+      end; fT:Close() -- Additional type is processed from descriptor
+    else ErrorNoHalt(gsTool..": "..tostring(fE)) end
+  end -- All the file type descriptors are processed
 end
 
 if(SERVER) then
