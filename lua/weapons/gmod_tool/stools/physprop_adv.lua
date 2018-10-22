@@ -189,18 +189,22 @@ function TOOL:DrawHUD(w, h)
   local trEnt, nP = oTr.Entity, oTr.SurfaceProps
   if(not (trEnt and trEnt:IsValid())) then return end
   local xyP = trEnt:LocalToWorld(trEnt:OBBCenter()):ToScreen()
-  local text = (nP and util.GetSurfacePropName(nP) or gsInvm); surface.SetFont(gsFont)
-  text = text.." [ "..tostring(trEnt:GetNWBool  (gsLisp.."gravity", true)).." | "..
-                      tostring(trEnt:GetNWString(gsLisp.."matprop", text)).." ]"
-  local tw, th = surface.GetTextSize(text)
+  local mAt = getMaterialInfo(self:GetClientNumber("material_type"),
+                              self:GetClientNumber("material_name"))
+  local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
+  local sTx = (nP and util.GetSurfacePropName(nP) or gsInvm)  
+  local bNw = tostring(trEnt:GetNWBool  (gsLisp.."gravity", true))
+  local sNw = tostring(trEnt:GetNWString(gsLisp.."matprop",  sTx))
+  sTx = sTx.." [ "..bNw.." | "..sNw.." ] ( "..gRv.." | "..mAt.." )"
+  local tw, th = surface.GetTextSize(sTx)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 12, xyP.y - th/2 - 4, tw + 24, th + 8, gclBgn)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 10, xyP.y - th/2 - 2, tw + 20, th + 4, gclBox)
-  draw.SimpleText(text, gsFont, xyP.x, xyP.y, gclTxt, gnTacn, gnTacn)
+  draw.SimpleText(sTx, gsFont, xyP.x, xyP.y, gclTxt, gnTacn, gnTacn)
 end
 
 local ConVarsDefault = TOOL:BuildConVarList()
 
-function TOOL.BuildCPanel( CPanel )
+function TOOL.BuildCPanel(CPanel)
   local nY, pItem = 0 -- pItem is the current panel created
           CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
   pItem = CPanel:Help   (language.GetPhrase("tool."..gsTool..".desc")); nY = nY + pItem:GetTall() + 2
