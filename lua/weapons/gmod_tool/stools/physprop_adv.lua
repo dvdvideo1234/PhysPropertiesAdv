@@ -16,7 +16,7 @@ end
 
 if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Construction")
-  
+
   TOOL.Information = {
     { name = "info", stage = 1},
     { name = "left"  },
@@ -26,31 +26,32 @@ if(CLIENT) then
   }
   -- Default translation string descriptions ( always english )
   local tTb = {
-    ["name"              ] =  "Physics Properties Adv",
-    ["desc"              ] =  "Advanced and extended version of the original physics properties tool",
-    ["left"              ] =  "Apply the selected physical property",
-    ["right"             ] =  "Cache the selected physical property",
-    ["right_use"         ] =  "Cache the applied physical property",
-    ["reload"            ] =  "Reset original physical property",
-    ["left_use"          ] =  "Apply cached physical property",
-    ["material_type"     ] =  "Select material type from the ones listed here",
-    ["material_type_def" ] =  "Select type...",
-    ["material_name"     ] =  "Select material name from the ones listed here",
-    ["material_name_def" ] =  "Select name...",
-    ["gravity_toggle_con"] =  "Enable gravity",
-    ["gravity_toggle"    ] =  "When checked enables the gravity for an entity",
-    ["material_draw_con" ] =  "Enable material draw",
-    ["material_draw"     ] =  "Show trace entity surface material"
+    ["tool."..gsTool..".name"              ] =  "Physics Properties Adv",
+    ["tool."..gsTool..".desc"              ] =  "Advanced and extended version of the original physics properties tool",
+    ["tool."..gsTool..".left"              ] =  "Apply the selected physical property",
+    ["tool."..gsTool..".right"             ] =  "Cache the selected physical property",
+    ["tool."..gsTool..".right_use"         ] =  "Cache the applied physical property",
+    ["tool."..gsTool..".reload"            ] =  "Reset original physical property",
+    ["tool."..gsTool..".left_use"          ] =  "Apply cached physical property",
+    ["tool."..gsTool..".material_type"     ] =  "Select material type from the ones listed here",
+    ["tool."..gsTool..".material_type_def" ] =  "Select type...",
+    ["tool."..gsTool..".material_name"     ] =  "Select material name from the ones listed here",
+    ["tool."..gsTool..".material_name_def" ] =  "Select name...",
+    ["tool."..gsTool..".gravity_toggle_con"] =  "Enable gravity",
+    ["tool."..gsTool..".gravity_toggle"    ] =  "When checked enables the gravity for an entity",
+    ["tool."..gsTool..".material_draw_con" ] =  "Enable material draw",
+    ["tool."..gsTool..".material_draw"     ] =  "Show trace entity surface material"
  }
   -- Override translations file
-  local kF = ("tool."..gsTool..".%s")
   local sT = varLng:GetString(); logStatus("lang", sT)
   if(sT ~= "en") then
     local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
-    local bS, tTo = pcall(fT); if(bS) then
-      for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
-    else ErrorNoHalt(gsTool..": "..tostring(tTo)) end
-  end; for key, val in pairs(tTb) do language.Add(kF:format(key), val) end
+    local bF, fFo = pcall(fT); if(bF) then
+      local bS, tTo = pcall(fFo, gsTool); if(bS) then
+        for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
+      else ErrorNoHalt(gsTool..": "..tostring(tTo)) end
+    else ErrorNoHalt(gsTool..": "..tostring(fFo)) end
+  end; for key, val in pairs(tTb) do language.Add(key, val) end
 end
 
 TOOL.ClientConVar = {
@@ -61,8 +62,8 @@ TOOL.ClientConVar = {
   [ "material_cash"  ] = gsInvm
 }
 
-TOOL.Category   = language.GetPhrase and language.GetPhrase("tool."..gsTool..".category")
-TOOL.Name       = language.GetPhrase and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
+TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
@@ -72,7 +73,7 @@ if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
 local tF = file.Find(gsTool.."/*.txt","DATA") -- Search for text files
 if(tF and tF[1]) then -- At least one file present
   local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
-  local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%w+"), ("DATA")
+  local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%S+"), ("DATA")
   for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
     if(not list.Contains(sT, sN)) then -- File names becomes physical properties type
       logStatus(sN); list.Add(sT, sN) end
@@ -141,9 +142,10 @@ function TOOL:LeftClick(tr)
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer() or trEnt:IsWorld()) then return false end
   -- Make sure there is a physics object to manipulate
-  if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then return false end
+  if(not util.IsValidPhysicsObject(trEnt, trBon)) then
+    return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
   local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
-  if(self:CheckButton(IN_USE)) then matprop = self:GetMaterialCash()
+  if(self:CheckButton(IN_SPEED)) then matprop = self:GetMaterialCash()
   else matprop = getMaterialInfo(self:GetClientNumber("material_type"),
                                  self:GetClientNumber("material_name")) end
   if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
@@ -160,7 +162,7 @@ function TOOL:RightClick(tr)
   if(not (tr and tr.Hit)) then return false end
   local mePly, trPro, trEnt = self:GetOwner(), tr.SurfaceProps, tr.Entity
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
-  if(self:CheckButton(IN_USE) and (trEnt and trEnt:IsValid())) then
+  if(self:CheckButton(IN_SPEED) and (trEnt and trEnt:IsValid())) then
     matprop = trEnt:GetNWString(gsLisp.."matprop", matprop) end
   if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
     return self:NotifyPlayer("Cache invalid: "..matprop, "ERROR", false) end
@@ -176,7 +178,7 @@ function TOOL:Reload(tr)
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
   if(matprop:len() == 0 or matprop == gsInvm) then
     return self:NotifyPlayer("Reset invalid: "..matprop, "ERROR", false) end
-  if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then
+  if(not util.IsValidPhysicsObject(trEnt, trBon)) then
     return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
   construct.SetPhysProp(mePly, trEnt, trBon, nil, {Material = matprop})
   trEnt:SetNWString(gsLisp.."matprop", matprop) -- Apply only the matprop on reload
@@ -192,7 +194,7 @@ function TOOL:DrawHUD(w, h)
   local mAt = getMaterialInfo(self:GetClientNumber("material_type"),
                               self:GetClientNumber("material_name"))
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
-  local sTx = (nP and util.GetSurfacePropName(nP) or gsInvm)  
+  local sTx = (nP and util.GetSurfacePropName(nP) or gsInvm)
   local bNw = tostring(trEnt:GetNWBool  (gsLisp.."gravity", true))
   local sNw = tostring(trEnt:GetNWString(gsLisp.."matprop",  sTx))
   sTx = sTx.." [ "..bNw.." | "..sNw.." ] ( "..gRv.." | "..mAt.." )"
