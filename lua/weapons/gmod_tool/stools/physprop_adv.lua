@@ -114,7 +114,7 @@ local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to 
   local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
   local tN = list.GetForEdit(gsLisp..tT[iT]) -- No edit though same here
   local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
-  return tostring(tN[iN] or "")
+  return tostring(tN[iN] or gsInvm)
 end
 
 function TOOL:GetMaterialDraw()
@@ -256,8 +256,10 @@ function TOOL.BuildCPanel(CPanel)
 end
 
 -- listen for changes to the localify language and reload the tool's menu to update the localizations
-cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN)
-  setTranslate(vN); TOOL.Name = language and language.GetPhrase("tool."..gsTool..".name")
-  local cPanel  = controlpanel.Get(TOOL.Mode); if(not IsValid(cPanel)) then return end
-  cPanel:ClearControls(); TOOL.BuildCPanel(cPanel)
-end, gsLisp.."lang")
+if(CLIENT) then
+  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN)
+    setTranslate(vN); TOOL.Name = language and language.GetPhrase("tool."..gsTool..".name")
+    local cPanel  = controlpanel.Get(TOOL.Mode); if(not IsValid(cPanel)) then return end
+    cPanel:ClearControls(); TOOL.BuildCPanel(cPanel)
+  end, gsLisp.."lang")
+end

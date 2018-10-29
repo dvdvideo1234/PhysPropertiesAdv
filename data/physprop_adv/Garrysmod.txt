@@ -1,0 +1,15 @@
+gmod_ice
+gmod_bouncy
+gmod_silent
+metal_bouncy
+metal
+dirt
+stone
+slipperyslime
+wood
+glass
+concrete_block
+ice
+rubber
+paper
+zombieflesh

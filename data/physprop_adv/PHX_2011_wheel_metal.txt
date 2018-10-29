@@ -1,0 +1,4 @@
+gm_ps_metaltire
+gm_ps_soccerball
+phx_rubbertire
+phx_rubbertire2

@@ -1,0 +1,6 @@
+cavern_rock
+hunter
+jalopytire
+slidingrubbertire_jalopyfront
+slidingrubbertire_jalopyrear
+jalopy
