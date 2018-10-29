@@ -11,6 +11,23 @@ local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 
 local function setTranslate(sT)  -- Override translations file
+  local tTb = {
+    ["tool."..gsTool..".name"              ] =  "Physics Properties Adv",
+    ["tool."..gsTool..".desc"              ] =  "Advanced and extended version of the original physics properties tool",
+    ["tool."..gsTool..".left"              ] =  "Apply the selected physical property",
+    ["tool."..gsTool..".right"             ] =  "Cache the selected physical property",
+    ["tool."..gsTool..".right_use"         ] =  "Cache the applied physical property",
+    ["tool."..gsTool..".reload"            ] =  "Reset original physical property",
+    ["tool."..gsTool..".left_use"          ] =  "Apply cached physical property",
+    ["tool."..gsTool..".material_type"     ] =  "Select material type from the ones listed here",
+    ["tool."..gsTool..".material_type_def" ] =  "Select type...",
+    ["tool."..gsTool..".material_name"     ] =  "Select material name from the ones listed here",
+    ["tool."..gsTool..".material_name_def" ] =  "Select name...",
+    ["tool."..gsTool..".gravity_toggle_con"] =  "Enable gravity",
+    ["tool."..gsTool..".gravity_toggle"    ] =  "When checked enables the gravity for an entity",
+    ["tool."..gsTool..".material_draw_con" ] =  "Enable material draw",
+    ["tool."..gsTool..".material_draw"     ] =  "Show trace entity surface material"
+  }
   local sT = tostring(sT or ""); if(sT ~= "en") then
     local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
     local bF, fFo = pcall(fT); if(bF) then
@@ -54,23 +71,7 @@ if(CLIENT) then
     { name = "reload"}
   }
   -- Default translation string descriptions ( always english )
-  local tTb = {
-    ["tool."..gsTool..".name"              ] =  "Physics Properties Adv",
-    ["tool."..gsTool..".desc"              ] =  "Advanced and extended version of the original physics properties tool",
-    ["tool."..gsTool..".left"              ] =  "Apply the selected physical property",
-    ["tool."..gsTool..".right"             ] =  "Cache the selected physical property",
-    ["tool."..gsTool..".right_use"         ] =  "Cache the applied physical property",
-    ["tool."..gsTool..".reload"            ] =  "Reset original physical property",
-    ["tool."..gsTool..".left_use"          ] =  "Apply cached physical property",
-    ["tool."..gsTool..".material_type"     ] =  "Select material type from the ones listed here",
-    ["tool."..gsTool..".material_type_def" ] =  "Select type...",
-    ["tool."..gsTool..".material_name"     ] =  "Select material name from the ones listed here",
-    ["tool."..gsTool..".material_name_def" ] =  "Select name...",
-    ["tool."..gsTool..".gravity_toggle_con"] =  "Enable gravity",
-    ["tool."..gsTool..".gravity_toggle"    ] =  "When checked enables the gravity for an entity",
-    ["tool."..gsTool..".material_draw_con" ] =  "Enable material draw",
-    ["tool."..gsTool..".material_draw"     ] =  "Show trace entity surface material"
- }; setTranslate(varLng:GetString())
+  setTranslate(varLng:GetString())
 end
 
 TOOL.ClientConVar = {
@@ -255,7 +256,7 @@ function TOOL.BuildCPanel(CPanel)
 end
 
 -- listen for changes to the localify language and reload the tool's menu to update the localizations
-cvars.AddChangeCallback("gmod_language", function(sNam, vO, vN)
+cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN)
   setTranslate(vN); TOOL.Name = language and language.GetPhrase("tool."..gsTool..".name")
   local cPanel  = controlpanel.Get(TOOL.Mode); if(not IsValid(cPanel)) then return end
   cPanel:ClearControls(); TOOL.BuildCPanel(cPanel)
