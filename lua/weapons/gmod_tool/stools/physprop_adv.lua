@@ -10,8 +10,37 @@ local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 
-local function logStatus(...)
-  print(gsTool..": ", ...)
+local function setTranslate(sT)  -- Override translations file
+  local sT = tostring(sT or ""); if(sT ~= "en") then
+    local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
+    local bF, fFo = pcall(fT); if(bF) then
+      local bS, tTo = pcall(fFo, gsTool); if(bS) then
+        for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
+      else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
+    else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
+  end; for key, val in pairs(tTb) do language.Add(key, val) end
+end
+
+local function setProperties(tF)
+  if(tF and tF[1]) then
+    local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
+    local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%S+"), ("DATA")
+    for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
+      if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
+      local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
+      if(fT) then local sL = fT:ReadLine(sM) -- Process the line
+        while(sL) do sL = sL:Trim() -- Avoid putting spaces
+          -- Every separate word is written to the list
+          if(sL ~= "" or sL:sub(1,1) ~= "#") then
+            for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
+              -- File names becomes physical properties type
+              if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
+            end -- When skip the commented lines
+          end; sL = fT:ReadLine(sM) -- Read the next line
+        end; fT:Close() -- Additional type is processed from descriptor
+      else ErrorNoHalt(gsTool..": "..tostring(fE)) end
+    end -- All the file type descriptors are processed
+  end
 end
 
 if(CLIENT) then
@@ -41,17 +70,7 @@ if(CLIENT) then
     ["tool."..gsTool..".gravity_toggle"    ] =  "When checked enables the gravity for an entity",
     ["tool."..gsTool..".material_draw_con" ] =  "Enable material draw",
     ["tool."..gsTool..".material_draw"     ] =  "Show trace entity surface material"
- }
-  -- Override translations file
-  local sT = varLng:GetString(); logStatus("lang", sT)
-  if(sT ~= "en") then
-    local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
-    local bF, fFo = pcall(fT); if(bF) then
-      local bS, tTo = pcall(fFo, gsTool); if(bS) then
-        for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
-      else ErrorNoHalt(gsTool..": "..tostring(tTo)) end
-    else ErrorNoHalt(gsTool..": "..tostring(fFo)) end
-  end; for key, val in pairs(tTb) do language.Add(key, val) end
+ }; setTranslate(varLng:GetString())
 end
 
 TOOL.ClientConVar = {
@@ -68,28 +87,8 @@ TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
 table.Empty(list.GetForEdit(gsLisp.."type"))
-
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-local tF = file.Find(gsTool.."/*.txt","DATA") -- Search for text files
-if(tF and tF[1]) then -- At least one file present
-  local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
-  local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%S+"), ("DATA")
-  for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
-    if(not list.Contains(sT, sN)) then -- File names becomes physical properties type
-      logStatus(sN); list.Add(sT, sN) end
-    local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
-    if(fT) then local sL = fT:ReadLine(sM) -- Process the line
-      while(sL) do sL = sL:Trim() -- Avoid putting spaces
-        -- Every separate word is written to the list
-        if(sL ~= "" or sL:sub(1,1) ~= "#") then
-          for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
-            if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
-          end -- When skip the commented lines
-        end; sL = fT:ReadLine(sM) -- Read the next line
-      end; fT:Close() -- Additional type is processed from descriptor
-    else ErrorNoHalt(gsTool..": "..tostring(fE)) end
-  end -- All the file type descriptors are processed
-end
+setProperties(file.Find(gsTool.."/*.txt","DATA")) -- Search for text files
 
 if(SERVER) then
   duplicator.RegisterEntityModifier(gsLisp.."dupe", function(oPly, oEnt, tData)
@@ -190,7 +189,8 @@ function TOOL:DrawHUD(w, h)
   local oTr = LocalPlayer():GetEyeTrace()
   local trEnt, nP = oTr.Entity, oTr.SurfaceProps
   if(not (trEnt and trEnt:IsValid())) then return end
-  local xyP = trEnt:LocalToWorld(trEnt:OBBCenter()):ToScreen()
+  local xyP = oTr.HitPos:ToScreen()
+        xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)  
   local mAt = getMaterialInfo(self:GetClientNumber("material_type"),
                               self:GetClientNumber("material_name"))
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
@@ -205,7 +205,6 @@ function TOOL:DrawHUD(w, h)
 end
 
 local ConVarsDefault = TOOL:BuildConVarList()
-
 function TOOL.BuildCPanel(CPanel)
   local nY, pItem = 0 -- pItem is the current panel created
           CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
@@ -254,3 +253,10 @@ function TOOL.BuildCPanel(CPanel)
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_draw"))
 end
+
+-- listen for changes to the localify language and reload the tool's menu to update the localizations
+cvars.AddChangeCallback("gmod_language", function(sNam, vO, vN)
+  setTranslate(vN); TOOL.Name = language and language.GetPhrase("tool."..gsTool..".name")
+  local cPanel  = controlpanel.Get(TOOL.Mode); if(not IsValid(cPanel)) then return end
+  cPanel:ClearControls(); TOOL.BuildCPanel(cPanel)
+end, gsLisp.."lang")
