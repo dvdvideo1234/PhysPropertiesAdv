@@ -11,4 +11,4 @@ Looking for that, you better see the [Wiki](https://github.com/dvdvideo1234/Phys
 
 ### How to install
 Just clone [this repo](https://github.com/dvdvideo1234/PhysPropertiesAdv) in your addons folder,
-then copy the configuration files inside your `DATA` folder `garrysmod/data/physprop_adv/*.txt`
+then copy [the configuration files](https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv) inside your `DATA` folder `garrysmod/data/physprop_adv/*.txt`
