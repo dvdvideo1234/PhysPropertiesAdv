@@ -4,6 +4,7 @@ local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
 local gsInvm = "N/A"
+local goTool = TOOL
 local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
@@ -35,12 +36,16 @@ local function setTranslate(sT)  -- Override translations file
         for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
       else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
     else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
-  end; for key, val in pairs(tTb) do language.Add(key, val) end
+  end
+end
+
+local function getPhrase(sK)
+  return (tTb[tostring(sK)] or "Oops, missing ?")
 end
 
 local function setProperties(tF)
   if(tF and tF[1]) then
-    local sR, sF, sE = "rb", (gsTool.."/%s.txt"), ("%.txt") -- Path format
+    local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
     local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%S+"), ("DATA")
     for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
       if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
@@ -82,8 +87,8 @@ TOOL.ClientConVar = {
   [ "material_cash"  ] = gsInvm
 }
 
-TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
-TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Category   = getPhrase("tool."..gsTool..".category")
+TOOL.Name       = getPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
@@ -208,8 +213,8 @@ end
 local ConVarsDefault = TOOL:BuildConVarList()
 function TOOL.BuildCPanel(CPanel)
   local nY, pItem = 0 -- pItem is the current panel created
-          CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
-  pItem = CPanel:Help   (language.GetPhrase("tool."..gsTool..".desc")); nY = nY + pItem:GetTall() + 2
+          CPanel:SetName(getPhrase("tool."..gsTool..".name"))
+  pItem = CPanel:Help   (getPhrase("tool."..gsTool..".desc")); nY = nY + pItem:GetTall() + 2
 
   pItem = CPanel:AddControl("ComboBox",{
     MenuButton = 1,
@@ -225,8 +230,8 @@ function TOOL.BuildCPanel(CPanel)
         pComboType:SetPos(2, nY)
         pComboType:SetSortItems(false)
         pComboType:SetTall(20)
-        pComboType:SetTooltip(language.GetPhrase("tool."..gsTool..".material_type"))
-        pComboType:SetValue(language.GetPhrase("tool."..gsTool..".material_type_def"))
+        pComboType:SetTooltip(getPhrase("tool."..gsTool..".material_type"))
+        pComboType:SetValue(getPhrase("tool."..gsTool..".material_type_def"))
         for iT = 1, #tT do pComboType:AddChoice(tT[iT], iT) end
   nY = nY + pComboType:GetTall() + 2
     -- http://wiki.garrysmod.com/page/Category:DComboBox
@@ -234,32 +239,33 @@ function TOOL.BuildCPanel(CPanel)
         pComboName:SetPos(2, nY)
         pComboName:SetSortItems(false)
         pComboName:SetTall(20)
-        pComboName:SetTooltip(language.GetPhrase("tool."..gsTool..".material_name"))
-        pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def").." "..matprop)
+        pComboName:SetTooltip(getPhrase("tool."..gsTool..".material_name"))
+        pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def").." "..matprop)
         pComboName.OnSelect = function(pnSelf, nInd, sVal, anyData)
           RunConsoleCommand(gsTool.."_material_name", anyData) end
   -- Material list selection
   pComboType.OnSelect = function(pnSelf, nInd, sVal, anyData)
     local iT = math.Clamp(anyData, 1, #tT)
     local tN = list.GetForEdit(gsLisp..tT[iT]); pComboName:Clear()
-    pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def"))
+    pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def"))
     for iN = 1, #tN do pComboName:AddChoice(tN[iN], iN) end
     RunConsoleCommand(gsTool.."_material_type", anyData)
   end
   CPanel:AddItem(pComboType)
   CPanel:AddItem(pComboName)
 
-  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".gravity_toggle_con"), gsTool.."_gravity_toggle")
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".gravity_toggle"))
-  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_draw"))
+  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".gravity_toggle_con"), gsTool.."_gravity_toggle")
+          pItem:SetTooltip(getPhrase("tool."..gsTool..".gravity_toggle"))
+  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
+          pItem:SetTooltip(getPhrase("tool."..gsTool..".material_draw"))
 end
 
 -- listen for changes to the localify language and reload the tool's menu to update the localizations
 if(CLIENT) then
+  cvars.RemoveChangeCallback(varLng:GetName(), gsLisp.."lang")
   cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN)
-    setTranslate(vN); TOOL.Name = language and language.GetPhrase("tool."..gsTool..".name")
-    local cPanel  = controlpanel.Get(TOOL.Mode); if(not IsValid(cPanel)) then return end
-    cPanel:ClearControls(); TOOL.BuildCPanel(cPanel)
+    setTranslate(vN); goTool.Name = getPhrase("tool."..gsTool..".name")
+    local cPanel  = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
+    cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsLisp.."lang")
 end
