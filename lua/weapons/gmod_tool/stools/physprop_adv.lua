@@ -13,7 +13,6 @@ local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 
 local function setTranslate(sT)  -- Override translations file
-  table.Empty(gtLang)
   gtLang["tool."..gsTool..".name"              ] = "Physics Properties Adv"
   gtLang["tool."..gsTool..".desc"              ] = "Advanced and extended version of the original physics properties tool"
   gtLang["tool."..gsTool..".left"              ] = "Apply the selected physical property"
