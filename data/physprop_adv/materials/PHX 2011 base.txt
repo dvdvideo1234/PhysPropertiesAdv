@@ -1,0 +1,6 @@
+phx_tire_normal 
+gm_ps_egg
+phx_explosiveball
+phx_flakshell
+phx_ww2bomb
+gm_torpedo

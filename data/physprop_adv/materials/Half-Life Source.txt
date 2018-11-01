@@ -1,0 +1,9 @@
+metal_barrellight_hl
+metal_barrel_hl
+plastic_barrel_verybuoyant
+friction_00
+friction_10
+friction_25
+frictionM_00
+frictionM_10
+frictionM_25
