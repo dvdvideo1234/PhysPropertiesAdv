@@ -5,6 +5,7 @@ local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
 local gsInvm = "N/A"
 local goTool = TOOL
+local gtLang = {}
 local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
@@ -12,35 +13,34 @@ local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 
 local function setTranslate(sT)  -- Override translations file
-  local tTb = {
-    ["tool."..gsTool..".name"              ] =  "Physics Properties Adv",
-    ["tool."..gsTool..".desc"              ] =  "Advanced and extended version of the original physics properties tool",
-    ["tool."..gsTool..".left"              ] =  "Apply the selected physical property",
-    ["tool."..gsTool..".right"             ] =  "Cache the selected physical property",
-    ["tool."..gsTool..".right_use"         ] =  "Cache the applied physical property",
-    ["tool."..gsTool..".reload"            ] =  "Reset original physical property",
-    ["tool."..gsTool..".left_use"          ] =  "Apply cached physical property",
-    ["tool."..gsTool..".material_type"     ] =  "Select material type from the ones listed here",
-    ["tool."..gsTool..".material_type_def" ] =  "Select type...",
-    ["tool."..gsTool..".material_name"     ] =  "Select material name from the ones listed here",
-    ["tool."..gsTool..".material_name_def" ] =  "Select name...",
-    ["tool."..gsTool..".gravity_toggle_con"] =  "Enable gravity",
-    ["tool."..gsTool..".gravity_toggle"    ] =  "When checked enables the gravity for an entity",
-    ["tool."..gsTool..".material_draw_con" ] =  "Enable material draw",
-    ["tool."..gsTool..".material_draw"     ] =  "Show trace entity surface material"
-  }
+  table.Empty(gtLang)
+  gtLang["tool."..gsTool..".name"              ] = "Physics Properties Adv"
+  gtLang["tool."..gsTool..".desc"              ] = "Advanced and extended version of the original physics properties tool"
+  gtLang["tool."..gsTool..".left"              ] = "Apply the selected physical property"
+  gtLang["tool."..gsTool..".right"             ] = "Cache the selected physical property"
+  gtLang["tool."..gsTool..".right_use"         ] = "Cache the applied physical property"
+  gtLang["tool."..gsTool..".reload"            ] = "Reset original physical property"
+  gtLang["tool."..gsTool..".left_use"          ] = "Apply cached physical property"
+  gtLang["tool."..gsTool..".material_type"     ] = "Select material type from the ones listed here"
+  gtLang["tool."..gsTool..".material_type_def" ] = "Select type..."
+  gtLang["tool."..gsTool..".material_name"     ] = "Select material name from the ones listed here"
+  gtLang["tool."..gsTool..".material_name_def" ] = "Select name..."
+  gtLang["tool."..gsTool..".gravity_toggle_con"] = "Enable gravity"
+  gtLang["tool."..gsTool..".gravity_toggle"    ] = "When checked enables the gravity for an entity"
+  gtLang["tool."..gsTool..".material_draw_con" ] = "Enable material draw"
+  gtLang["tool."..gsTool..".material_draw"     ] = "Show trace entity surface material"
   local sT = tostring(sT or ""); if(sT ~= "en") then
     local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
     local bF, fFo = pcall(fT); if(bF) then
       local bS, tTo = pcall(fFo, gsTool); if(bS) then
-        for key, val in pairs(tTb) do tTb[key] = (tTo[key] or tTb[key]) end
+        for key, val in pairs(gtLang) do gtLang[key] = (tTo[key] or gtLang[key]) end
       else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
     else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
-  end
+  end; for key, val in pairs(gtLang) do language.Add(key, val) end
 end
 
 local function getPhrase(sK)
-  return (tTb[tostring(sK)] or "Oops, missing ?")
+  return (gtLang[tostring(sK)] or "Oops, missing ?")
 end
 
 local function setProperties(tF)
@@ -87,14 +87,14 @@ TOOL.ClientConVar = {
   [ "material_cash"  ] = gsInvm
 }
 
-TOOL.Category   = getPhrase("tool."..gsTool..".category")
+TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = getPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
 table.Empty(list.GetForEdit(gsLisp.."type"))
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-setProperties(file.Find(gsTool.."/*.txt","DATA")) -- Search for text files
+setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 
 if(SERVER) then
   duplicator.RegisterEntityModifier(gsLisp.."dupe", function(oPly, oEnt, tData)
@@ -196,7 +196,7 @@ function TOOL:DrawHUD(w, h)
   local trEnt, nP = oTr.Entity, oTr.SurfaceProps
   if(not (trEnt and trEnt:IsValid())) then return end
   local xyP = oTr.HitPos:ToScreen()
-        xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)  
+        xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
   local mAt = getMaterialInfo(self:GetClientNumber("material_type"),
                               self:GetClientNumber("material_name"))
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
@@ -263,9 +263,8 @@ end
 -- listen for changes to the localify language and reload the tool's menu to update the localizations
 if(CLIENT) then
   cvars.RemoveChangeCallback(varLng:GetName(), gsLisp.."lang")
-  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN)
-    setTranslate(vN); goTool.Name = getPhrase("tool."..gsTool..".name")
-    local cPanel  = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
+  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
+    local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsLisp.."lang")
 end
