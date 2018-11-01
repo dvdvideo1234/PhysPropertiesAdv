@@ -87,7 +87,7 @@ TOOL.ClientConVar = {
 }
 
 TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
-TOOL.Name       = getPhrase("tool."..gsTool..".name")
+TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
