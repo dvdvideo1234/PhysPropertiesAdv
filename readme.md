@@ -6,6 +6,12 @@ that you can modify, create, update and structure by yourself.
 The tool can support many more surface properties than its original
 brother, though the configuration you have to make yourself.
 
+### Donations
+I am supporting this tool in my free time mostly and it was quite a
+ride since I already first created it. But since my lack of time for
+playing gmod has been drastically increased some people asked me if
+I accept donations, here is the [link to my PayPal](https://www.paypal.me/DeyanVasilev).
+
 ### Configuration
 Looking for that, you better see the [Wiki](https://github.com/dvdvideo1234/PhysPropertiesAdv/wiki/Adding-configurations)
 
