@@ -39,7 +39,10 @@ local function setTranslate(sT)  -- Override translations file
 end
 
 local function getPhrase(sK)
-  return (gtLang[tostring(sK)] or "Oops, missing ?")
+  local sK = tostring(sK) if(not gtLang[sK]) then
+    ErrorNoHalt(gsToolName..": getPhrase("..sK.."): Missing")
+    return "Oops, missing ?" -- Return some default translation
+  end; return gtLang[sK]
 end
 
 local function setProperties(tF)
