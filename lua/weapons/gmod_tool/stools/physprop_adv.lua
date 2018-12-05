@@ -29,12 +29,14 @@ local function setTranslate(sT)  -- Override translations file
   gtLang["tool."..gsTool..".material_draw_con" ] = "Enable material draw"
   gtLang["tool."..gsTool..".material_draw"     ] = "Show trace entity surface material"
   local sT = tostring(sT or ""); if(sT ~= "en") then
-    local fT = CompileFile(("%s/lang/%s.lua"):format(gsTool, sT))
-    local bF, fFo = pcall(fT); if(bF) then
-      local bS, tTo = pcall(fFo, gsTool); if(bS) then
-        for key, val in pairs(gtLang) do gtLang[key] = (tTo[key] or gtLang[key]) end
-      else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
-    else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
+    local sN = ("%s/lang/%s.lua"):format(gsTool, sT)
+    if(file.Exists("lua/"..sN, "GAME")) then local fT = CompileFile(sN)
+      local bF, fFo = pcall(fT); if(bF) then
+        local bS, tTo = pcall(fFo, gsTool); if(bS) then
+          for key, val in pairs(gtLang) do gtLang[key] = (tTo[key] or gtLang[key]) end
+        else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
+      else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
+    end
   end; for key, val in pairs(gtLang) do language.Add(key, val) end
 end
 
