@@ -12,6 +12,11 @@ local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 
+-- Send language definitions to the client to populate the menu
+local gsLangForm = ("%s"..gsTool.."/lang/%s")
+local gtTransFile = file.Find(gsLangForm:format("lua/", "*.lua"), "GAME")
+for iD = 1, #gtTransFile do AddCSLuaFile(gsLangForm:format("", gtTransFile[iD])) end
+
 local function setTranslate(sT)  -- Override translations file
   gtLang["tool."..gsTool..".name"              ] = "Physics Properties Adv"
   gtLang["tool."..gsTool..".desc"              ] = "Advanced and extended version of the original physics properties tool"
@@ -81,6 +86,12 @@ if(CLIENT) then
   }
   -- Default translation string descriptions ( always english )
   setTranslate(varLng:GetString())
+  -- listen for changes to the localify language and reload the tool's menu to update the localizations
+  cvars.RemoveChangeCallback(varLng:GetName(), gsLisp.."lang")
+  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
+    local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
+    cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
+  end, gsLisp.."lang")
 end
 
 TOOL.ClientConVar = {
@@ -216,6 +227,7 @@ end
 
 local ConVarsDefault = TOOL:BuildConVarList()
 function TOOL.BuildCPanel(CPanel)
+  CPanel:ClearControls()
   local nY, pItem = 0 -- pItem is the current panel created
           CPanel:SetName(getPhrase("tool."..gsTool..".name"))
   pItem = CPanel:Help   (getPhrase("tool."..gsTool..".desc")); nY = nY + pItem:GetTall() + 2
@@ -262,13 +274,4 @@ function TOOL.BuildCPanel(CPanel)
           pItem:SetTooltip(getPhrase("tool."..gsTool..".gravity_toggle"))
   pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
           pItem:SetTooltip(getPhrase("tool."..gsTool..".material_draw"))
-end
-
--- listen for changes to the localify language and reload the tool's menu to update the localizations
-if(CLIENT) then
-  cvars.RemoveChangeCallback(varLng:GetName(), gsLisp.."lang")
-  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
-    local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
-    cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
-  end, gsLisp.."lang")
 end
