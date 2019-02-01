@@ -1,17 +1,17 @@
-﻿return function(sTool) return {
-  ["tool."..sTool..".name"              ] =  "Физически свойства Под",
-  ["tool."..sTool..".desc"              ] =  "Подобрена и разширена версия на оригиналния инструмент за физически свойства",
-  ["tool."..sTool..".left"              ] =  "Приложи избраното физическо свойство",
-  ["tool."..sTool..".right"             ] =  "Запази избраното физическо свойство",
-  ["tool."..sTool..".right_use"         ] =  "Запази приложеното физическо свойство",
-  ["tool."..sTool..".reload"            ] =  "Презареди оригиналното физическо свойство",
-  ["tool."..sTool..".left_use"          ] =  "Презареди запазеното физическо свойство",
-  ["tool."..sTool..".material_type"     ] =  "Изберете тип на материала от изброените в списъка",
-  ["tool."..sTool..".material_type_def" ] =  "Избери тип...",
-  ["tool."..sTool..".material_name"     ] =  "Изберете име на материала от изброените в списъка",
-  ["tool."..sTool..".material_name_def" ] =  "Избери име...",
-  ["tool."..sTool..".gravity_toggle_con"] =  "Включи гравитацията",
-  ["tool."..sTool..".gravity_toggle"    ] =  "Когато е избрано разрешава гравитацията на обекта ",
-  ["tool."..sTool..".material_draw_con" ] =  "Включи чертането на материал",
-  ["tool."..sTool..".material_draw"     ] =  "Показва състоянието на избрания материал на обекта"
-} end
+﻿return function(sTool) local tSet = {} -- Bulgarian
+  tSet["tool."..sTool..".name"              ] = "Физически свойства Под"
+  tSet["tool."..sTool..".desc"              ] = "Подобрена и разширена версия на оригиналния инструмент за физически свойства"
+  tSet["tool."..sTool..".left"              ] = "Приложи избраното физическо свойство"
+  tSet["tool."..sTool..".right"             ] = "Запази избраното физическо свойство"
+  tSet["tool."..sTool..".right_use"         ] = "Запази приложеното физическо свойство"
+  tSet["tool."..sTool..".reload"            ] = "Презареди оригиналното физическо свойство"
+  tSet["tool."..sTool..".left_use"          ] = "Презареди запазеното физическо свойство"
+  tSet["tool."..sTool..".material_type"     ] = "Изберете тип на материала от изброените в списъка"
+  tSet["tool."..sTool..".material_type_def" ] = "Избери тип..."
+  tSet["tool."..sTool..".material_name"     ] = "Изберете име на материала от изброените в списъка"
+  tSet["tool."..sTool..".material_name_def" ] = "Избери име..."
+  tSet["tool."..sTool..".gravity_toggle_con"] = "Включи гравитацията"
+  tSet["tool."..sTool..".gravity_toggle"    ] = "Когато е избрано разрешава гравитацията на обекта "
+  tSet["tool."..sTool..".material_draw_con" ] = "Включи чертането на материал"
+  tSet["tool."..sTool..".material_draw"     ] = "Показва състоянието на избрания материал на обекта"
+return tSet end

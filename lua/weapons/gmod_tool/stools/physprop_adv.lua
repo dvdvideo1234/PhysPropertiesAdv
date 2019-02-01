@@ -10,44 +10,30 @@ local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
+local gsFLng = ("%s"..gsTool.."/lang/%s")
 local varLng = GetConVar("gmod_language")
 
--- Send language definitions to the client to populate the menu
-local gsLangForm = ("%s"..gsTool.."/lang/%s")
-local gtTransFile = file.Find(gsLangForm:format("lua/", "*.lua"), "GAME")
-for iD = 1, #gtTransFile do AddCSLuaFile(gsLangForm:format("", gtTransFile[iD])) end
-
-local function setTranslate(sT)  -- Override translations file
-  gtLang["tool."..gsTool..".name"              ] = "Physics Properties Adv"
-  gtLang["tool."..gsTool..".desc"              ] = "Advanced and extended version of the original physics properties tool"
-  gtLang["tool."..gsTool..".left"              ] = "Apply the selected physical property"
-  gtLang["tool."..gsTool..".right"             ] = "Cache the selected physical property"
-  gtLang["tool."..gsTool..".right_use"         ] = "Cache the applied physical property"
-  gtLang["tool."..gsTool..".reload"            ] = "Reset original physical property"
-  gtLang["tool."..gsTool..".left_use"          ] = "Apply cached physical property"
-  gtLang["tool."..gsTool..".material_type"     ] = "Select material type from the ones listed here"
-  gtLang["tool."..gsTool..".material_type_def" ] = "Select type..."
-  gtLang["tool."..gsTool..".material_name"     ] = "Select material name from the ones listed here"
-  gtLang["tool."..gsTool..".material_name_def" ] = "Select name..."
-  gtLang["tool."..gsTool..".gravity_toggle_con"] = "Enable gravity"
-  gtLang["tool."..gsTool..".gravity_toggle"    ] = "When checked enables the gravity for an entity"
-  gtLang["tool."..gsTool..".material_draw_con" ] = "Enable material draw"
-  gtLang["tool."..gsTool..".material_draw"     ] = "Show trace entity surface material"
-  local sT = tostring(sT or ""); if(sT ~= "en") then
-    local sN = ("%s/lang/%s.lua"):format(gsTool, sT)
-    if(file.Exists("lua/"..sN, "GAME")) then local fT = CompileFile(sN)
-      local bF, fFo = pcall(fT); if(bF) then
-        local bS, tTo = pcall(fFo, gsTool); if(bS) then
-          for key, val in pairs(gtLang) do gtLang[key] = (tTo[key] or gtLang[key]) end
-        else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(tTo)) end
-      else ErrorNoHalt(gsTool..": setTranslate("..sT.."): "..tostring(fFo)) end
-    end
-  end; for key, val in pairs(gtLang) do language.Add(key, val) end
+local function getTranslate(sT)
+  local sN = gsFLng:format("", sT..".lua")
+  if(not file.Exists("lua/"..sN, "GAME")) then return nil end
+  local fT = CompileFile(sN); if(not fT) then return print("1") end
+  local bF, fF = pcall(fT); if(not bF) then return nil end
+  local bS, tS = pcall(fF, gsTool, gsEntLimit)
+  if(not bF) then return nil end; return tS
+end
+      
+local function setTranslate(sT)
+  table.Empty(gtLang) -- Override translations file
+  local tB = getTranslate("en"); if(not tB) then
+    ErrorNoHalt(gsTool..": setTranslate: Missing") end
+  if(sT ~= "en") then local tC = getTranslate(sT); if(tC) then
+    for key, val in pairs(tB) do tB[key] = (tC[key] or tB[key]) end end
+  end; for key, val in pairs(tB) do gtLang[key] = tB[key]; language.Add(key, val) end
 end
 
 local function getPhrase(sK)
   local sK = tostring(sK) if(not gtLang[sK]) then
-    ErrorNoHalt(gsToolName..": getPhrase("..sK.."): Missing")
+    ErrorNoHalt(gsTool..": getPhrase("..sK.."): Missing")
     return "Oops, missing ?" -- Return some default translation
   end; return gtLang[sK]
 end
@@ -72,6 +58,17 @@ local function setProperties(tF)
       else ErrorNoHalt(gsTool..": "..tostring(fE)) end
     end -- All the file type descriptors are processed
   end
+end
+
+if(SERVER) then
+
+  -- Send language definitions to the client to populate the menu
+  local gtTransFile = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
+  for iD = 1, #gtTransFile do AddCSLuaFile(gsFLng:format("", gtTransFile[iD])) end
+
+  duplicator.RegisterEntityModifier(gsLisp.."dupe", function(oPly, oEnt, tData)
+    oEnt:SetNWBool(gsLisp.."gravity", tData[1]); oEnt:SetNWString(gsLisp.."matprop", tData[2])
+  end)
 end
 
 if(CLIENT) then
@@ -110,12 +107,6 @@ TOOL.ConfigName = nil -- Configure file name (nil for default)
 table.Empty(list.GetForEdit(gsLisp.."type"))
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
 setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
-
-if(SERVER) then
-  duplicator.RegisterEntityModifier(gsLisp.."dupe", function(oPly, oEnt, tData)
-    oEnt:SetNWBool(gsLisp.."gravity", tData[1]); oEnt:SetNWString(gsLisp.."matprop", tData[2])
-  end)
-end
 
 -- Send notification to client that something happened
 function TOOL:NotifyPlayer(sText, sType, vRet)
