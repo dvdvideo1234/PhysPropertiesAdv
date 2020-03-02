@@ -3,39 +3,46 @@ local gsLisp = "physics_material_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
-local gsInvm = "N/A"
-local goTool = TOOL
-local gtLang = {}
 local gnRadm = (20*0.618)
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local gsFLng = ("%s"..gsTool.."/lang/%s")
 local varLng = GetConVar("gmod_language")
+local gsInvm, goTool, gtLang = "N/A", TOOL, {}
+local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
+local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
 
 local function getTranslate(sT)
   local sN = gsFLng:format("", sT..".lua")
   if(not file.Exists("lua/"..sN, "GAME")) then return nil end
-  local fT = CompileFile(sN); if(not fT) then return print("1") end
-  local bF, fF = pcall(fT); if(not bF) then return nil end
-  local bS, tS = pcall(fF, gsTool, gsEntLimit)
-  if(not bF) then return nil end; return tS
+  local fT = CompileFile(sN); if(not fT) then -- Try to compile the UTF-8 translations
+    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [1] Compile error") return nil end
+  local bF, fF = pcall(fT); if(not bF) then -- Prepare the result function for return call
+    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [2] Prepare error: "..fF) return nil end
+  local bS, tS = pcall(fF, gsTool, gsEntLimit); if(not bF) then -- Create translation table
+    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [3] Create error: "..tS) return nil end
+  return tS -- If it all goes well it will return the translation hash phrase table
 end
-      
+
 local function setTranslate(sT)
   table.Empty(gtLang) -- Override translations file
   local tB = getTranslate("en"); if(not tB) then
-    ErrorNoHalt(gsTool..": setTranslate: Missing") end
+    ErrorNoHalt(gsTool..": setTranslate: English missing") end
   if(sT ~= "en") then local tC = getTranslate(sT); if(tC) then
     for key, val in pairs(tB) do tB[key] = (tC[key] or tB[key]) end end
-  end; for key, val in pairs(tB) do gtLang[key] = tB[key]; language.Add(key, val) end
+  end -- Apply country stript. If not translated, use the base english script
+  for key, val in pairs(tB) do -- Loop across the nglish translation as it have all stuff
+    gtLang[key] = tB[key]  -- Register translations in the table for custom getphrase
+    language.Add(key, val) -- Send the translation to the game for tool descriotion
+  end
 end
 
 local function getPhrase(sK)
   local sK = tostring(sK) if(not gtLang[sK]) then
     ErrorNoHalt(gsTool..": getPhrase("..sK.."): Missing")
     return "Oops, missing ?" -- Return some default translation
-  end; return gtLang[sK]
+  end; return gtLang[sK] -- Return the actual translated phrase
 end
 
 local function setProperties(tF)
@@ -55,7 +62,7 @@ local function setProperties(tF)
             end -- When skip the commented lines
           end; sL = fT:ReadLine(sM) -- Read the next line
         end; fT:Close() -- Additional type is processed from descriptor
-      else ErrorNoHalt(gsTool..": "..tostring(fE)) end
+      else ErrorNoHalt(gsTool..": setProperties: "..tostring(fE)) end
     end -- All the file type descriptors are processed
   end
 end
@@ -109,15 +116,11 @@ if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
 setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 
 -- Send notification to client that something happened
-function TOOL:NotifyPlayer(sText, sType, vRet)
+function TOOL:NotifyPlayer(sText, sType, ...)
   if(SERVER) then local mePly = self:GetOwner()
-    mePly:SendLua("GAMEMODE:AddNotify(\""..sText.."\", NOTIFY_"..sType..", 6)")
-    mePly:SendLua("surface.PlaySound(\"ambient/water/drip"..math.random(1, 4)..".wav\")")
-  end; return vRet
-end
-
-local function getConvar(sN)
-  return GetConVar(gsTool.."_"..sN)
+    mePly:SendLua(gfNotf:format(sText, sType))
+    mePly:SendLua(gfSong:format(math.random(1, 4)))
+  end; return ...
 end
 
 local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
@@ -229,8 +232,8 @@ function TOOL.BuildCPanel(CPanel)
     Options    = {["Default"] = ConVarsDefault},
     CVars      = table.GetKeys(ConVarsDefault)
   }); nY = pItem:GetTall() + 2
-  local matprop = getMaterialInfo(getConvar("material_type"):GetInt(),
-                                  getConvar("material_name"):GetInt())
+  local matprop = getMaterialInfo(GetConVar(gsTool.."_material_type"):GetInt(),
+                                  GetConVar(gsTool.."_material_name"):GetInt())
     -- http://wiki.garrysmod.com/page/Category:DComboBox
   local tT = list.GetForEdit(gsLisp.."type")
   local pComboType = vgui.Create("DComboBox", CPanel)
