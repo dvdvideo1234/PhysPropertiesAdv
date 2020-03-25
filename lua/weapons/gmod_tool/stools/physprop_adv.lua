@@ -126,7 +126,8 @@ end
 local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
   local tT = list.GetForEdit(gsLisp.."type") -- No edit though just read it
   local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
-  local tN = list.GetForEdit(gsLisp..tT[iT]) -- No edit though same here
+  local sT = tT[iT]; if(not sT) then return gsInvm end
+  local tN = list.GetForEdit(gsLisp..sT) -- No edit though same here
   local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
   return tostring(tN[iN] or gsInvm)
 end
@@ -152,23 +153,23 @@ function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   -- Make sure we do not apply custom physical properties on the world surface
-  local trEnt, trBon = tr.Entity, tr.PhysicsBone
+  local trEnt, trBone = tr.Entity, tr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer() or trEnt:IsWorld()) then return false end
   -- Make sure there is a physics object to manipulate
-  if(not util.IsValidPhysicsObject(trEnt, trBon)) then
-    return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
+  if(not util.IsValidPhysicsObject(trEnt, trBone)) then
+    return self:NotifyPlayer("Apply physics invalid", "ERROR", false) end
   local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
   if(self:CheckButton(IN_SPEED)) then matprop = self:GetMaterialCash()
   else matprop = getMaterialInfo(self:GetClientNumber("material_type"),
                                  self:GetClientNumber("material_name")) end
   if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
-    return self:NotifyPlayer("Apply invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Apply invalid: "..gsInvm, "ERROR", false) end
   -- Zhu Li, do the thing and hand me a screwdriver. Network the values for drawing
-  construct.SetPhysProp(mePly, trEnt, trBon, nil, {GravityToggle = gravity, Material = matprop})
+  construct.SetPhysProp(mePly, trEnt, trBone, nil, {GravityToggle = gravity, Material = matprop})
   trEnt:SetNWBool(gsLisp.."gravity", gravity); trEnt:SetNWString(gsLisp.."matprop", matprop)
   DoPropSpawnedEffect(trEnt); duplicator.StoreEntityModifier(trEnt, gsLisp.."dupe", {gravity, matprop})
-  return self:NotifyPlayer("Material apply: "..matprop, "GENERIC", true)
+  return self:NotifyPlayer("Apply material: "..matprop, "GENERIC", true)
 end
 
 function TOOL:RightClick(tr)
@@ -179,24 +180,24 @@ function TOOL:RightClick(tr)
   if(self:CheckButton(IN_SPEED) and (trEnt and trEnt:IsValid())) then
     matprop = trEnt:GetNWString(gsLisp.."matprop", matprop) end
   if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
-    return self:NotifyPlayer("Cache invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Cache invalid: "..gsInvm, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
-  return self:NotifyPlayer("Material copy: "..matprop, "UNDO", true)
+  return self:NotifyPlayer("Cache material: "..matprop, "UNDO", true)
 end
 
 function TOOL:Reload(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
-  local trEnt, trBon = tr.Entity, tr.PhysicsBone
+  local trEnt, trBone = tr.Entity, tr.PhysicsBone
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
   if(matprop:len() == 0 or matprop == gsInvm) then
-    return self:NotifyPlayer("Reset invalid: "..matprop, "ERROR", false) end
-  if(not util.IsValidPhysicsObject(trEnt, trBon)) then
+    return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
+  if(not util.IsValidPhysicsObject(trEnt, trBone)) then
     return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
-  construct.SetPhysProp(mePly, trEnt, trBon, nil, {Material = matprop})
+  construct.SetPhysProp(mePly, trEnt, trBone, nil, {Material = matprop})
   trEnt:SetNWString(gsLisp.."matprop", matprop) -- Apply only the matprop on reload
-  return self:NotifyPlayer("Material reset: "..matprop, "GENERIC", true)
+  return self:NotifyPlayer("Reset material: "..matprop, "GENERIC", true)
 end
 
 function TOOL:DrawHUD(w, h)
