@@ -154,7 +154,10 @@ end
 
 function TOOL:GetBoneView(oPly, iD)
   local tInf = gsSdiv:Explode(oPly:GetNWString(gsLisp..iD, gsInvm))
-  return tInf[1]:Trim(), ((tonumber(tInf[2]:Trim()) or 0) ~= 0)
+  local sMat = tostring(tInf[1] or gsInvm):Trim()
+  local bGrv = tostring(tInf[2] or gsSdiv):Trim()
+        bGrv = ((tonumber(bGrv) or 0) ~= 0)
+  return sMat, bGrv
 end
 
 function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
@@ -253,12 +256,13 @@ function TOOL:DrawHUD(w, h)
   local oTr = mePly:GetEyeTrace()
   local trEnt, iB = oTr.Entity, oTr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return end
+  local sNw, bNw = self:GetBoneView(mePly, iB)
+  if(not isValidMaterialProp(sNw)) then return end
   local xyP = oTr.HitPos:ToScreen(); xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
   local mAt = getMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
-  local sNw, bNw = self:GetBoneView(mePly, iB); bNw = tostring(bNw)
-  local mAo = self:GetOriginal(trEnt) -- Original material
+  local mAo = self:GetOriginal(trEnt); bNw = tostring(bNw) -- Original material
   local sTx = "["..iB.."] { "..bNw.." | "..sNw.." } ( "..gRv.." | "..mAt.." ) "..mAo
   local tw, th = surface.GetTextSize(sTx)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 12, xyP.y - th/2 - 4, tw + 24, th + 8, gclBgn)
