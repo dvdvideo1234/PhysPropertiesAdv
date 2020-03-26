@@ -1,5 +1,5 @@
 local gsTool = "physprop_adv"
-local gsLisp = "physics_material_adv_"
+local gsLisp = "physicsal_props_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
@@ -210,13 +210,12 @@ function TOOL:Think()
   if(not ((trEnt and trEnt:IsValid()) or oTr.HitWorld)) then return nil end
   if(SERVER) then
     gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
-    if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK)) then
+    if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK) or mePly:KeyDown(IN_RELOAD)) then
       local sKey, iPro = gsLisp.."matorig", oTr.SurfaceProps
       local matprop = trEnt:GetNWString(sKey, gsInvm)
       if(matprop:len() == 0 or matprop == gsInvm) then
         matprop = (iPro and util.GetSurfacePropName(iPro) or gsInvm)
-        trEnt:SetNWString(sKey, matprop)
-        self:NotifyPlayer("Store material: "..matprop, "GENERIC", true)
+        trEnt:SetNWString(sKey, matprop) -- Store the original material
       end -- Update the player vision for the entity
       for iB = 0, (trEnt:GetPhysicsObjectCount() - 1) do
         local phEnt = trEnt:GetPhysicsObjectNum(iB)
