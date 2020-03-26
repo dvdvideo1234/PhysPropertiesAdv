@@ -3,7 +3,7 @@ local gsLisp = "physicsal_props_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
-local gnRadm, gsSdiv = (20*0.618), "/"
+local gnRadm, gsSdiv = (20*0.618), "#"
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
@@ -44,6 +44,10 @@ local function getPhrase(sK)
     ErrorNoHalt(gsTool..": getPhrase("..sK.."): Missing")
     return "Oops, missing ?" -- Return some default translation
   end; return gtLang[sK] -- Return the actual translated phrase
+end
+
+local function isValidMaterialProp(sMat)
+  return (sMat:len() > 0 and sMat ~= gsInvm)
 end
 
 local function setProperties(tF)
@@ -140,6 +144,23 @@ function TOOL:GetGravity()
   return ((self:GetClientNumber("gravity_toggle") or 0) ~= 0)
 end
 
+function TOOL:GetOriginal(trEnt)
+  return trEnt:GetNWString(gsLisp.."matorig", gsInvm)
+end
+
+function TOOL:SetOriginal(trEnt, sOrg)
+  trEnt:SetNWString(gsLisp.."matorig", sOrg)
+end
+
+function TOOL:GetBoneView(oPly, iD)
+  local tInf = gsSdiv:Explode(oPly:GetNWString(gsLisp..iD, gsInvm))
+  return tInf[1]:Trim(), ((tonumber(tInf[2]:Trim()) or 0) ~= 0)
+end
+
+function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
+  oPly:SetNWString(gsLisp..iD, sMat..gsSdiv..(bGrv and 1 or 0))
+end
+
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
@@ -158,7 +179,7 @@ function TOOL:LeftClick(tr)
     matprop = getMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
   end; DoPropSpawnedEffect(trEnt) -- Network the values for drawing when available and corect
-  if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
+  if(not isValidMaterialProp(matprop)) then -- Check for a valid value
     return self:NotifyPlayer("Apply invalid: "..gsInvm, "ERROR", false) end
   -- Finally apply the material on the seected bone(s)
   if(mePly:KeyDown(IN_USE)) then local iBone = trEnt:GetPhysicsObjectCount()
@@ -174,9 +195,9 @@ end
 function TOOL:RightClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit)) then return false end
-  local mePly, trPro, trEnt = self:GetOwner(), tr.SurfaceProps, tr.Entity
-  local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
-  if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
+  local mePly, iP = self:GetOwner(), tr.SurfaceProps
+  local matprop = (iP and util.GetSurfacePropName(iP) or gsInvm)
+  if(not isValidMaterialProp(matprop)) then -- Check for a valid value
     return self:NotifyPlayer("Cache invalid: "..gsInvm, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
   return self:NotifyPlayer("Cache material: "..matprop, "UNDO", true)
@@ -189,8 +210,7 @@ function TOOL:Reload(tr)
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
     return self:NotifyPlayer("Reset physics invalid", "ERROR", false) end
-  local matprop = trEnt:GetNWString(gsLisp.."matorig", gsInvm)
-  if(matprop:len() == 0 or matprop == gsInvm) then
+  local matprop = self:GetOriginal(trEnt); if(not isValidMaterialProp(matprop)) then
     return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
   if(mePly:KeyDown(IN_USE)) then local iBone = trEnt:GetPhysicsObjectCount()
     for iB = 0, (iBone - 1) do -- Reset the material on all bones
@@ -208,21 +228,19 @@ function TOOL:Think()
   if(not (oTr and oTr.Hit)) then return nil end
   local trEnt, trBone = oTr.Entity, oTr.PhysicsBone
   if(not ((trEnt and trEnt:IsValid()) or oTr.HitWorld)) then return nil end
-  if(SERVER) then
-    gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
+  if(SERVER) then gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
     if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK) or mePly:KeyDown(IN_RELOAD)) then
-      local sKey, iPro = gsLisp.."matorig", oTr.SurfaceProps
-      local matprop = trEnt:GetNWString(sKey, gsInvm)
-      if(matprop:len() == 0 or matprop == gsInvm) then
-        matprop = (iPro and util.GetSurfacePropName(iPro) or gsInvm)
-        trEnt:SetNWString(sKey, matprop) -- Store the original material
+      local matprop = self:GetOriginal(trEnt) -- Read the original physical property
+      if(not isValidMaterialProp(matprop)) then local iP = oTr.SurfaceProps
+        matprop = (iP and util.GetSurfacePropName(iP) or gsInvm)
+        self:SetOriginal(trEnt, matprop) -- Store the original material
       end -- Update the player vision for the entity
       for iB = 0, (trEnt:GetPhysicsObjectCount() - 1) do
         local phEnt = trEnt:GetPhysicsObjectNum(iB)
         if(phEnt and phEnt:IsValid()) then
           local matprop = phEnt:GetMaterial()
-          local gravity = (phEnt:IsGravityEnabled() and 1 or 0)
-          mePly:SetNWString(gsLisp..iB, matprop..gsSdiv..gravity)
+          local gravity = phEnt:IsGravityEnabled()
+          self:SetBoneView(mePly, iB, matprop, gravity)
         end
       end
     end
@@ -233,15 +251,15 @@ function TOOL:DrawHUD(w, h)
   if(not self:GetMaterialDraw()) then return end
   local mePly = LocalPlayer()
   local oTr = mePly:GetEyeTrace()
-  local trEnt, nP, iB = oTr.Entity, oTr.SurfaceProps, oTr.PhysicsBone
+  local trEnt, iB = oTr.Entity, oTr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return end
   local xyP = oTr.HitPos:ToScreen(); xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
   local mAt = getMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
-  local tIo = gsSdiv:Explode(mePly:GetNWString(gsLisp..iB, gsInvm))
-  local sNw, bNw = tIo[1]:Trim(), tostring(tonumber(tIo[2]:Trim()) ~= 0)
-  local sTx = "["..iB.."] { "..bNw.." | "..sNw.." } ( "..gRv.." | "..mAt.." )"
+  local sNw, bNw = self:GetBoneView(mePly, iB); bNw = tostring(bNw)
+  local mAo = self:GetOriginal(trEnt) -- Original material
+  local sTx = "["..iB.."] { "..bNw.." | "..sNw.." } ( "..gRv.." | "..mAt.." ) "..mAo
   local tw, th = surface.GetTextSize(sTx)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 12, xyP.y - th/2 - 4, tw + 24, th + 8, gclBgn)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 10, xyP.y - th/2 - 2, tw + 20, th + 4, gclBox)
