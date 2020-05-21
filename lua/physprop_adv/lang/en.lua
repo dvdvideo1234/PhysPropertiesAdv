@@ -14,4 +14,6 @@
   tSet["tool."..sTool..".gravity_toggle"    ] = "When checked enables the gravity for an entity"
   tSet["tool."..sTool..".material_draw_con" ] = "Enable material draw"
   tSet["tool."..sTool..".material_draw"     ] = "Show trace entity surface material"
+  tSet["tool."..sTool..".applyall_bone_con" ] = "Enable change for all bones"
+  tSet["tool."..sTool..".applyall_bone"     ] = "When enabled changes the physical properties for all entity bones"
 return tSet end

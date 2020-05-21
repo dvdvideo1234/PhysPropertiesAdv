@@ -14,4 +14,6 @@
   tSet["tool."..sTool..".gravity_toggle"    ] = "Когато е избрано разрешава гравитацията на обекта "
   tSet["tool."..sTool..".material_draw_con" ] = "Включи чертането на материал"
   tSet["tool."..sTool..".material_draw"     ] = "Показва състоянието на избрания материал на обекта"
+  tSet["tool."..sTool..".applyall_bone_con" ] = "Включи подмяна за всички кости"
+  tSet["tool."..sTool..".applyall_bone"     ] = "Когато е включено подмяната на материала се отразява върху всички кости"
 return tSet end

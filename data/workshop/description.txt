@@ -6,19 +6,27 @@ This script extends your physical properties list by given number of categories
  [*] [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]Extendable physical properties list[/url]. Not static like the default in-game one
  [*] Physical properties categories are extracted from file names
  [*] Physical properties names are are extracted from category files using word wrap
+ [*] Property copy/cache ( Right click )
+ [*] Property apply on a entity ( LeftClick )
+ [*] Property apply on a contraption ( Shift + LeftClick )
+ [*] Property apply copied/cached ( Use + LeftClick )
+ [*] Property apply copied/cached on contraption ( Use + Shift + LeftClick )
+ [*] Property apply/restore on all the bones control panel option
+ [*] Property restore on a bone ( Reload )
+ [*] Property restore on a contraption ( Reload + Shift ) 
 [/list]
 
-For detailed manual, please refer to Readme.md
-
-Readme: https://github.com/dvdvideo1234/PhysPropertiesAdv/blob/master/readme.md
+Tool manual: https://github.com/dvdvideo1234/PhysPropertiesAdv/blob/master/readme.md
 
 Git repository: https://github.com/dvdvideo1234/PhysPropertiesAdv
 
 Report errors to: https://github.com/dvdvideo1234/PhysPropertiesAdv/issues
 
-To install materials
- [1] Create the folder garrysmod\data\physprop_adv\materials
- [2] Populate it with the [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]data found here[/url]
+[url=https://github.com/dvdvideo1234/PhysPropertiesAdv/wiki/Adding-configurations]To install materials:[/url]
+[olist]
+ [*] Create the folder [code]..garrysmod/data/physprop_adv/materials[/code]
+ [*] Populate it with the [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]data found here[/url]
+[/olist]
  
 Re-uploading and source stealing will not be tolerated !
 Selling it is also out of option, as the open source suggests !

@@ -46,10 +46,6 @@ local function getPhrase(sK)
   end; return gtLang[sK] -- Return the actual translated phrase
 end
 
-local function isValidMaterialProp(sMat)
-  return (sMat:len() > 0 and sMat ~= gsInvm)
-end
-
 local function setProperties(tF)
   if(tF and tF[1]) then
     local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
@@ -100,6 +96,7 @@ end
 
 TOOL.ClientConVar = {
   [ "gravity_toggle" ] = 1,
+  [ "applyall_bone"  ] = 1,
   [ "material_type"  ] = 1,
   [ "material_name"  ] = 1,
   [ "material_draw"  ] = 1,
@@ -132,6 +129,10 @@ function TOOL:NotifyPlayer(sText, sType, ...)
   end; return ...
 end
 
+function TOOL:IsMaterial(sMat)
+  return (sMat:len() > 0 and sMat ~= gsInvm)
+end
+
 function TOOL:GetMaterialDraw()
   return ((self:GetClientNumber("material_draw") or 0) ~= 0)
 end
@@ -144,12 +145,24 @@ function TOOL:GetGravity()
   return ((self:GetClientNumber("gravity_toggle") or 0) ~= 0)
 end
 
+function TOOL:GetApplyBones()
+  return ((self:GetClientNumber("applyall_bone") or 0) ~= 0)
+end
+
 function TOOL:GetOriginal(trEnt)
   return trEnt:GetNWString(gsLisp.."matorig", gsInvm)
 end
 
 function TOOL:SetOriginal(trEnt, sOrg)
   trEnt:SetNWString(gsLisp.."matorig", sOrg)
+end
+
+function TOOL:PutOriginal(trEnt, sOrg)
+  local sMat, bMat = self:GetOriginal(trEnt), self:IsMaterial(sOrg)
+  if(bMat and sMat == gsInvm) then -- Original is not yet set
+    self:NotifyPlayer("Store material: "..sOrg, "HINT")
+    self:SetOriginal(trEnt, sOrg); return true -- Store original material
+  end; return false
 end
 
 function TOOL:GetBoneView(oPly, iD)
@@ -164,6 +177,21 @@ function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
   oPly:SetNWString(gsLisp..iD, sMat..gsSdiv..(bGrv and 1 or 0))
 end
 
+function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
+  local mBone = 0; if(not (oEnt and oEnt:IsValid())) then
+    return self:NotifyPlayer("Request entity invalid", "ERROR", mBone) end
+  self:PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
+  local ePly, bBone = self:GetOwner(), self:GetApplyBones()
+  local tSet, mBone = {Material = sMat, GravityToggle = bGrv}, 1
+  if(bBone) then mBone = oEnt:GetPhysicsObjectCount()
+    for iD = 0, (mBone - 1) do -- Apply the material on all bones
+      construct.SetPhysProp(ePly, oEnt, iD, nil, tSet)
+    end
+  else local iBone = (tonumber(iBone) or 0)
+    construct.SetPhysProp(ePly, oEnt, iBone, nil, tSet)
+  end; return mBone
+end
+
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
@@ -171,27 +199,27 @@ function TOOL:LeftClick(tr)
   local trEnt, trBone = tr.Entity, tr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer()) then return false end
-
   -- Make sure there is a physics object to manipulate
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
     return self:NotifyPlayer("Apply physics invalid", "ERROR", false) end
   local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
-  if(mePly:KeyDown(IN_SPEED)) then -- Use the cached material
+  if(mePly:KeyDown(IN_USE)) then -- Use the cached material
     matprop = self:GetMaterialCash()  -- Read value from the convar
   else -- Use the material provided by the client control panel
     matprop = getMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
   end; DoPropSpawnedEffect(trEnt) -- Network the values for drawing when available and corect
-  if(not isValidMaterialProp(matprop)) then -- Check for a valid value
+  if(not self:IsMaterial(matprop)) then -- Check for a valid value
     return self:NotifyPlayer("Apply invalid: "..gsInvm, "ERROR", false) end
-  -- Finally apply the material on the seected bone(s)
-  if(mePly:KeyDown(IN_USE)) then local iBone = trEnt:GetPhysicsObjectCount()
-    for iD = 0, (iBone - 1) do -- Apply the material on all bones
-      construct.SetPhysProp(mePly, trEnt, iD, nil, {GravityToggle = gravity, Material = matprop})
-    end; return self:NotifyPlayer("Apply ["..iBone.."] materials: "..matprop, "GENERIC", true)
-  else -- Aplly only to the trace bone
-    construct.SetPhysProp(mePly, trEnt, trBone, nil, {GravityToggle = gravity, Material = matprop})
-    return self:NotifyPlayer("Apply material: "..matprop, "GENERIC", true)
+  -- Finally apply the material on the seected entities
+  if(mePly:KeyDown(IN_SPEED)) then local iBone, iEnts = 0, 0
+    local tEnts = constraint.GetAllConstrainedEntities(trEnt)
+    for key, ent in pairs(tEnts) do iEnts = iEnts + 1
+      iBone = iBone + self:SetMaterialProp(ent, trBone, matprop, gravity)
+    end; return self:NotifyPlayer("Apply ["..iBone.."] bones ["..iEnts.."] entities: "..matprop, "GENERIC", true)
+  else -- Apply only to the trace bone
+    local iBone = self:SetMaterialProp(trEnt, trBone, matprop, gravity)
+    return self:NotifyPlayer("Apply ["..iBone.."] bones: "..matprop, "GENERIC", true)
   end -- There are two glasses of water on the table. One if I am thursty and one if I'm not
 end
 
@@ -200,7 +228,7 @@ function TOOL:RightClick(tr)
   if(not (tr and tr.Hit)) then return false end
   local mePly, iP = self:GetOwner(), tr.SurfaceProps
   local matprop = (iP and util.GetSurfacePropName(iP) or gsInvm)
-  if(not isValidMaterialProp(matprop)) then -- Check for a valid value
+  if(not self:IsMaterial(matprop)) then -- Check for a valid value
     return self:NotifyPlayer("Cache invalid: "..gsInvm, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
   return self:NotifyPlayer("Cache material: "..matprop, "UNDO", true)
@@ -213,15 +241,18 @@ function TOOL:Reload(tr)
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
     return self:NotifyPlayer("Reset physics invalid", "ERROR", false) end
-  local matprop = self:GetOriginal(trEnt); if(not isValidMaterialProp(matprop)) then
-    return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
-  if(mePly:KeyDown(IN_USE)) then local iBone = trEnt:GetPhysicsObjectCount()
-    for iB = 0, (iBone - 1) do -- Reset the material on all bones
-      construct.SetPhysProp(mePly, trEnt, iB, nil, {Material = matprop})
-    end; return self:NotifyPlayer("Reset ["..iBone.."] material: "..matprop, "CLEANUP", true)
+  if(mePly:KeyDown(IN_SPEED)) then local iBone, iEnts = 0, 0
+    local tEnts = constraint.GetAllConstrainedEntities(trEnt)
+    for key, ent in pairs(tEnts) do iEnts = iEnts + 1
+      local matprop = self:GetOriginal(ent); if(not self:IsMaterial(matprop)) then
+        return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
+      iBone = iBone + self:SetMaterialProp(ent, trBone, matprop)
+    end; return self:NotifyPlayer("Reset ["..iBone.."] bones ["..iEnts.."] entities", "CLEANUP", true)
   else -- Reset only to the trace bone
-    construct.SetPhysProp(mePly, trEnt, trBone, nil, {Material = matprop})
-    return self:NotifyPlayer("Reset material: "..matprop, "CLEANUP", true)
+    local matprop = self:GetOriginal(trEnt); if(not self:IsMaterial(matprop)) then
+      return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
+    local iBone = self:SetMaterialProp(trEnt, trBone, matprop)
+    return self:NotifyPlayer("Reset ["..iBone.."] bones: "..matprop, "CLEANUP", true)
   end
 end
 
@@ -229,15 +260,12 @@ function TOOL:Think()
   local mePly = self:GetOwner()
   local oTr   = mePly:GetEyeTrace()
   if(not (oTr and oTr.Hit)) then return nil end
-  local trEnt, trBone = oTr.Entity, oTr.PhysicsBone
+  local trEnt, trBone, trSurf = oTr.Entity, oTr.PhysicsBone, oTr.SurfaceProps
   if(not ((trEnt and trEnt:IsValid()) or oTr.HitWorld)) then return nil end
   if(SERVER) then gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
     if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK) or mePly:KeyDown(IN_RELOAD)) then
-      local matprop = self:GetOriginal(trEnt) -- Read the original physical property
-      if(not isValidMaterialProp(matprop)) then local iP = oTr.SurfaceProps
-        matprop = (iP and util.GetSurfacePropName(iP) or gsInvm)
-        self:SetOriginal(trEnt, matprop) -- Store the original material
-      end -- Update the player vision for the entity
+      self:PutOriginal(trEnt, (trSurf and util.GetSurfacePropName(trSurf) or gsInvm))
+      -- Update the player vision for the entity
       for iB = 0, (trEnt:GetPhysicsObjectCount() - 1) do
         local phEnt = trEnt:GetPhysicsObjectNum(iB)
         if(phEnt and phEnt:IsValid()) then
@@ -257,7 +285,7 @@ function TOOL:DrawHUD(w, h)
   local trEnt, iB = oTr.Entity, oTr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return end
   local sNw, bNw = self:GetBoneView(mePly, iB)
-  if(not isValidMaterialProp(sNw)) then return end
+  if(not self:IsMaterial(sNw)) then return end
   local xyP = oTr.HitPos:ToScreen(); xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
   local mAt = getMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
@@ -319,4 +347,6 @@ function TOOL.BuildCPanel(CPanel)
           pItem:SetTooltip(getPhrase("tool."..gsTool..".gravity_toggle"))
   pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
           pItem:SetTooltip(getPhrase("tool."..gsTool..".material_draw"))
+  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".applyall_bone_con"), gsTool.."_applyall_bone")
+          pItem:SetTooltip(getPhrase("tool."..gsTool..".applyall_bone"))
 end
