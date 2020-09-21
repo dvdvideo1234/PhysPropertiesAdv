@@ -160,7 +160,6 @@ end
 function TOOL:PutOriginal(trEnt, sOrg)
   local sMat, bMat = self:GetOriginal(trEnt), self:IsMaterial(sOrg)
   if(bMat and sMat == gsInvm) then -- Original is not yet set
-    self:NotifyPlayer("Store material: "..sOrg, "HINT")
     self:SetOriginal(trEnt, sOrg); return true -- Store original material
   end; return false
 end
