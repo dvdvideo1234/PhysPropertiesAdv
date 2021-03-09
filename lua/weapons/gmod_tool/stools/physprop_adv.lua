@@ -103,6 +103,8 @@ TOOL.ClientConVar = {
   [ "material_cash"  ] = gsInvm
 }
 
+local gtConvar = TOOL:BuildConVarList()
+
 TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
@@ -297,36 +299,35 @@ function TOOL:DrawHUD(w, h)
   draw.SimpleText(sTx, gsFont, xyP.x, xyP.y, gclTxt, gnTacn, gnTacn)
 end
 
-local ConVarsDefault = TOOL:BuildConVarList()
+-- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel)
-  CPanel:ClearControls()
+  CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
   local nY, pItem = 0 -- pItem is the current panel created
           CPanel:SetName(getPhrase("tool."..gsTool..".name"))
-  pItem = CPanel:Help   (getPhrase("tool."..gsTool..".desc")); nY = nY + pItem:GetTall() + 2
+  pItem = CPanel:Help   (getPhrase("tool."..gsTool..".desc"))
 
-  pItem = CPanel:AddControl("ComboBox",{
-    MenuButton = 1,
-    Folder     = gsTool,
-    Options    = {["Default"] = ConVarsDefault},
-    CVars      = table.GetKeys(ConVarsDefault)
-  }); nY = pItem:GetTall() + 2
+  pItem = vgui.Create("ControlPresets", CPanel)
+  pItem:SetPreset(gsTool)
+  pItem:AddOption("Default", gtConvar)
+  for key, val in pairs(table.GetKeys(gtConvar)) do pItem:AddConVar(val) end
+  pItem:Dock(TOP); CPanel:AddItem(pItem)
+
   local matprop = getMaterialInfo(GetConVar(gsTool.."_material_type"):GetInt(),
                                   GetConVar(gsTool.."_material_name"):GetInt())
     -- http://wiki.garrysmod.com/page/Category:DComboBox
   local tT = list.GetForEdit(gsLisp.."type")
   local pComboType = vgui.Create("DComboBox", CPanel)
-        pComboType:SetPos(2, nY)
+        pComboType:Dock(TOP)
         pComboType:SetSortItems(false)
-        pComboType:SetTall(20)
+        pComboType:SetTall(25)
         pComboType:SetTooltip(getPhrase("tool."..gsTool..".material_type"))
         pComboType:SetValue(getPhrase("tool."..gsTool..".material_type_def"))
         for iT = 1, #tT do pComboType:AddChoice(tT[iT], iT) end
-  nY = nY + pComboType:GetTall() + 2
     -- http://wiki.garrysmod.com/page/Category:DComboBox
   local pComboName = vgui.Create("DComboBox", CPanel)
-        pComboName:SetPos(2, nY)
+        pComboName:Dock(TOP)
         pComboName:SetSortItems(false)
-        pComboName:SetTall(20)
+        pComboName:SetTall(25)
         pComboName:SetTooltip(getPhrase("tool."..gsTool..".material_name"))
         pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def").." "..matprop)
         pComboName.OnSelect = function(pnSelf, nInd, sVal, anyData)
