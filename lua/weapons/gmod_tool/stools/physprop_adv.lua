@@ -1,5 +1,5 @@
 local gsTool = "physprop_adv"
-local gsLisp = "physicsal_props_adv_"
+local gsPref = "physicsal_props_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
@@ -48,8 +48,8 @@ end
 
 local function setProperties(tF)
   if(tF and tF[1]) then
-    local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
-    local sT, sM, sP, sD = (gsLisp.."type"), ("*line"), ("%S+"), ("DATA")
+    local sR, sF, sE = "rb", (gsTool.."/data/%s.txt"), ("%.txt") -- Path format
+    local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
     for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
       if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
       local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
@@ -57,7 +57,7 @@ local function setProperties(tF)
         while(sL) do sL = sL:Trim() -- Avoid putting spaces
           -- Every separate word is written to the list
           if(sL ~= "" or sL:sub(1,1) ~= "#") then
-            for sW in sL:gmatch(sP) do local sI = (gsLisp..sN)
+            for sW in sL:gmatch(sP) do local sI = (gsPref..sN)
               -- File names becomes physical properties type
               if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
             end -- When skip the commented lines
@@ -87,11 +87,11 @@ if(CLIENT) then
   -- Default translation string descriptions ( always english )
   setTranslate(varLng:GetString())
   -- listen for changes to the localify language and reload the tool's menu to update the localizations
-  cvars.RemoveChangeCallback(varLng:GetName(), gsLisp.."lang")
+  cvars.RemoveChangeCallback(varLng:GetName(), gsPref.."lang")
   cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
     local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
-  end, gsLisp.."lang")
+  end, gsPref.."lang")
 end
 
 TOOL.ClientConVar = {
@@ -110,15 +110,15 @@ TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
-table.Empty(list.GetForEdit(gsLisp.."type"))
+table.Empty(list.GetForEdit(gsPref.."type"))
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
+setProperties(file.Find(gsTool.."/data/*.txt","DATA")) -- Search for text files
 
 local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
-  local tT = list.GetForEdit(gsLisp.."type") -- No edit though just read it
+  local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it
   local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
   local sT = tT[iT]; if(not sT) then return gsInvm end
-  local tN = list.GetForEdit(gsLisp..sT) -- No edit though same here
+  local tN = list.GetForEdit(gsPref..sT) -- No edit though same here
   local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
   return tostring(tN[iN] or gsInvm)
 end
@@ -152,11 +152,11 @@ function TOOL:GetApplyBones()
 end
 
 function TOOL:GetOriginal(trEnt)
-  return trEnt:GetNWString(gsLisp.."matorig", gsInvm)
+  return trEnt:GetNWString(gsPref.."matorig", gsInvm)
 end
 
 function TOOL:SetOriginal(trEnt, sOrg)
-  trEnt:SetNWString(gsLisp.."matorig", sOrg)
+  trEnt:SetNWString(gsPref.."matorig", sOrg)
 end
 
 function TOOL:PutOriginal(trEnt, sOrg)
@@ -167,7 +167,7 @@ function TOOL:PutOriginal(trEnt, sOrg)
 end
 
 function TOOL:GetBoneView(oPly, iD)
-  local tInf = gsSdiv:Explode(oPly:GetNWString(gsLisp..iD, gsInvm))
+  local tInf = gsSdiv:Explode(oPly:GetNWString(gsPref..iD, gsInvm))
   local sMat = tostring(tInf[1] or gsInvm):Trim()
   local bGrv = tostring(tInf[2] or gsSdiv):Trim()
         bGrv = ((tonumber(bGrv) or 0) ~= 0)
@@ -175,7 +175,7 @@ function TOOL:GetBoneView(oPly, iD)
 end
 
 function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
-  oPly:SetNWString(gsLisp..iD, sMat..gsSdiv..(bGrv and 1 or 0))
+  oPly:SetNWString(gsPref..iD, sMat..gsSdiv..(bGrv and 1 or 0))
 end
 
 function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
@@ -315,7 +315,7 @@ function TOOL.BuildCPanel(CPanel)
   local matprop = getMaterialInfo(GetConVar(gsTool.."_material_type"):GetInt(),
                                   GetConVar(gsTool.."_material_name"):GetInt())
     -- http://wiki.garrysmod.com/page/Category:DComboBox
-  local tT = list.GetForEdit(gsLisp.."type")
+  local tT = list.GetForEdit(gsPref.."type")
   local pComboType = vgui.Create("DComboBox", CPanel)
         pComboType:Dock(TOP)
         pComboType:SetSortItems(false)
@@ -335,7 +335,7 @@ function TOOL.BuildCPanel(CPanel)
   -- Material list selection
   pComboType.OnSelect = function(pnSelf, nInd, sVal, anyData)
     local iT = math.Clamp(anyData, 1, #tT)
-    local tN = list.GetForEdit(gsLisp..tT[iT]); pComboName:Clear()
+    local tN = list.GetForEdit(gsPref..tT[iT]); pComboName:Clear()
     pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def"))
     for iN = 1, #tN do pComboName:AddChoice(tN[iN], iN) end
     RunConsoleCommand(gsTool.."_material_type", anyData)
