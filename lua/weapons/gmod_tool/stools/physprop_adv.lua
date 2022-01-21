@@ -48,7 +48,7 @@ end
 
 local function setProperties(tF)
   if(tF and tF[1]) then
-    local sR, sF, sE = "rb", (gsTool.."/data/%s.txt"), ("%.txt") -- Path format
+    local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
     local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
     for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
       if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
@@ -112,7 +112,7 @@ TOOL.ConfigName = nil -- Configure file name (nil for default)
 
 table.Empty(list.GetForEdit(gsPref.."type"))
 if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-setProperties(file.Find(gsTool.."/data/*.txt","DATA")) -- Search for text files
+setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 
 local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
   local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it

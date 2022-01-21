@@ -48,7 +48,7 @@ if(CLIENT) then
 
 	local function readMaterials(tF)
 	  if(tF and tF[1]) then local tL = list.GetTable()
-	    local sR, sF, sE = "rb", (gsTool.."/data/%s.txt"), ("%.txt") -- Path format
+	    local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
 	    local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
 	    table.Empty(list.GetForEdit(sT)) -- Update the list with new values
 	    for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
@@ -72,7 +72,7 @@ if(CLIENT) then
 	end
 
 	if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-	readMaterials(file.Find(gsTool.."/data/*.txt","DATA")) -- Search for text files
+	readMaterials(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 else
 	util.AddNetworkString(gsPref.."randomize")
 end
