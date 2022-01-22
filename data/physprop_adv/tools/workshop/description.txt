@@ -1,11 +1,17 @@
+[img=https://i.imgur.com/2txEPIN.gif][/img]
+
 [h1] Description [/h1]
 This script extends your physical properties list by given number of categories
 
 [h1] Feature List [/h1]
 [list]
- [*] [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]Extendable physical properties list[/url]. Not static like the default in-game one
- [*] Physical properties categories are extracted from file names
- [*] Physical properties names are are extracted from category files using word wrap
+ [*] Client-side diedicated custom properties and material grouping
+ [*] Physical properties (advanced) tool for surface behavior manipulation
+ [*] Material (advanced) tool for extended surface texture manipulation
+ [*] Physical properties and material tools are fully easily  translatabe
+ [*] Extendable [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]physical property[/url] and [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/material_adv/materials]material[/url] lists
+ [*] Physical properties and material categories are extracted from file names
+ [*] Physical properties and material names are extracted from category files using word wrap
  [*] Property copy/cache ( Right click )
  [*] Property apply on a entity ( LeftClick )
  [*] Property apply on a contraption ( Shift + LeftClick )
@@ -13,7 +19,10 @@ This script extends your physical properties list by given number of categories
  [*] Property apply copied/cached on contraption ( Use + Shift + LeftClick )
  [*] Property apply/restore on all the bones control panel option
  [*] Property restore on a bone ( Reload )
- [*] Property restore on a contraption ( Reload + Shift ) 
+ [*] Property restore on a contraption ( Reload + Shift )
+ [*] Material custom user defined lists can be created
+ [*] Material randomize on tool primary fire using the current list
+ [*] Material selection list is dynamic and recreatable
 [/list]
 
 Tool manual: https://github.com/dvdvideo1234/PhysPropertiesAdv/blob/master/readme.md
@@ -24,10 +33,14 @@ Report errors to: https://github.com/dvdvideo1234/PhysPropertiesAdv/issues
 
 [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/wiki/Adding-configurations]To install materials:[/url]
 [olist]
- [*] Create the folder [code]..garrysmod/data/physprop_adv/materials[/code]
- [*] Populate it with the [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]data found here[/url]
+ [*] Create the folder
+    1. Property data [code]..garrysmod/data/physprop_adv/materials[/code]
+    2. Material data [code]..garrysmod/data/physprop_adv/materials[/code]
+ [*] Populate configuration:
+    1. Property data [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/physprop_adv/materials]here[/url]
+    2. Material data [url=https://github.com/dvdvideo1234/PhysPropertiesAdv/tree/master/data/material_adv/materials]here[/url]
 [/olist]
- 
+
 Re-uploading and source stealing will not be tolerated !
 Selling it is also out of option, as the open source suggests !
 
