@@ -1,4 +1,5 @@
-local gsTool = "physprop_adv"
+local goTool = TOOL
+local gsTool = goTool.Mode
 local gsPref = "physicsal_props_adv_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
@@ -9,73 +10,69 @@ local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
 local gsFLng = ("%s"..gsTool.."/lang/%s")
 local varLng = GetConVar("gmod_language")
-local gsInvm, goTool, gtLang = "N/A", TOOL, {}
 local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
 local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
-local gtTrig = {Old = 0, New = 0}
+local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
-local function getTranslate(sT)
-  local sN = gsFLng:format("", sT..".lua")
-  if(not file.Exists("lua/"..sN, "GAME")) then return nil end
-  local fT = CompileFile(sN); if(not fT) then -- Try to compile the UTF-8 translations
-    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [1] Compile error") return nil end
-  local bF, fF = pcall(fT); if(not bF) then -- Prepare the result function for return call
-    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [2] Prepare error: "..fF) return nil end
-  local bS, tS = pcall(fF, gsTool, gsEntLimit); if(not bF) then -- Create translation table
-    ErrorNoHalt(gsTool..": getTranslate("..sT.."): [3] Create error: "..tS) return nil end
-  return tS -- If it all goes well it will return the translation hash phrase table
-end
-
-local function setTranslate(sT)
-  table.Empty(gtLang) -- Override translations file
-  local tB = getTranslate("en"); if(not tB) then
-    ErrorNoHalt(gsTool..": setTranslate: English missing") end
-  if(sT ~= "en") then local tC = getTranslate(sT); if(tC) then
-    for key, val in pairs(tB) do tB[key] = (tC[key] or tB[key]) end end
-  end -- Apply country stript. If not translated, use the base english script
-  for key, val in pairs(tB) do -- Loop across the nglish translation as it have all stuff
-    gtLang[key] = tB[key]  -- Register translations in the table for custom getphrase
-    language.Add(key, val) -- Send the translation to the game for tool descriotion
-  end
-end
-
-local function getPhrase(sK)
-  local sK = tostring(sK) if(not gtLang[sK]) then
-    ErrorNoHalt(gsTool..": getPhrase("..sK.."): Missing")
-    return "Oops, missing ?" -- Return some default translation
-  end; return gtLang[sK] -- Return the actual translated phrase
-end
-
-local function setProperties(tF)
-  if(tF and tF[1]) then
-    local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
-    local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
-    for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
-      if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
-      local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
-      if(fT) then local sL = fT:ReadLine(sM) -- Process the line
-        while(sL) do sL = sL:Trim() -- Avoid putting spaces
-          -- Every separate word is written to the list
-          if(sL ~= "" or sL:sub(1,1) ~= "#") then
-            for sW in sL:gmatch(sP) do local sI = (gsPref..sN)
-              -- File names becomes physical properties type
-              if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
-            end -- When skip the commented lines
-          end; sL = fT:ReadLine(sM) -- Read the next line
-        end; fT:Close() -- Additional type is processed from descriptor
-      else ErrorNoHalt(gsTool..": setProperties: "..tostring(fE)) end
-    end -- All the file type descriptors are processed
-  end
-end
-
-if(SERVER) then
-  -- Send language definitions to the client to populate the menu
-  local gtTransFile = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
-  for iD = 1, #gtTransFile do AddCSLuaFile(gsFLng:format("", gtTransFile[iD])) end
-end
 
 if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Construction")
+
+  local function getTranslate(sT)
+    local sN = gsFLng:format("", sT..".lua")
+    if(not file.Exists("lua/"..sN, "GAME")) then return nil end
+    local fT = CompileFile(sN); if(not fT) then -- Try to compile the UTF-8 translations
+      ErrorNoHalt(gsTool.."("..sT.."): [1] Compile error\n") return nil end
+    local bF, fF = pcall(fT); if(not bF) then -- Prepare the result function for return call
+      ErrorNoHalt(gsTool.."("..sT.."): [2] Prepare error: "..fF.."\n") return nil end
+    local bS, tS = pcall(fF, gsTool); if(not bS) then -- Create translation table
+      ErrorNoHalt(gsTool.."("..sT.."): [3] Create error: "..tS.."\n") return nil end
+    return tS -- If it all goes well it will return the translation hash phrase table
+  end
+
+  local function setTranslate(sT)
+    local tB, tC = getTranslate("en"); if(not tB) then
+      ErrorNoHalt(gsTool..": English missing\n") end
+    if(sT ~= "en") then tC = getTranslate(sT) end
+    for key, val in pairs(tB) do -- Loop english
+      local msg = (tC and (tC[key] or val) or val)
+      language.Add(key, msg) -- Apply the panel labels
+    end
+  end
+
+  local function setDatabase(tF)
+    if(tF and tF[1]) then
+      local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
+      local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
+      table.Empty(list.GetForEdit(sT)) -- Update the list with new values
+      for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
+        if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
+        local fT, fE = file.Open(sF:format(sN), sR, sD) -- Read type
+        if(fT) then local sL = fT:ReadLine(sM) -- Process the line
+          -- Update the list with new values by clearing it first
+          local sI = (gsPref..sN); table.Empty(list.GetForEdit(sI))
+          while(sL) do sL = sL:Trim() -- Avoid putting spaces
+            -- Every separate word is written to the list
+            if(sL ~= "" or sL:sub(1,1) ~= "#") then
+              for sW in sL:gmatch(sP) do
+                -- File names becomes entries type
+                if(not list.Contains(sI, sW)) then list.Add(sI, sW) end
+              end -- When skip the commented lines
+            end; sL = fT:ReadLine(sM) -- Read the next line
+          end; fT:Close() -- Additional type is processed from descriptor
+        else ErrorNoHalt(gsTool..": "..tostring(fE)) end
+      end -- All the file type descriptors are processed
+    end
+  end
+
+  function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
+    local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it
+    local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
+    local sT = tT[iT]; if(not sT) then return gsInvm end
+    local tN = list.GetForEdit(gsPref..sT) -- No edit though same here
+    local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
+    return tostring(tN[iN] or gsInvm)
+  end
 
   TOOL.Information = {
     { name = "info", stage = 1},
@@ -92,6 +89,9 @@ if(CLIENT) then
     local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsPref.."lang")
+
+  if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
+  setDatabase(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 end
 
 TOOL.ClientConVar = {
@@ -100,6 +100,7 @@ TOOL.ClientConVar = {
   [ "material_type"  ] = 1,
   [ "material_name"  ] = 1,
   [ "material_draw"  ] = 1,
+  [ "material_info"  ] = gsInvm,
   [ "material_cash"  ] = gsInvm
 }
 
@@ -109,19 +110,6 @@ TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
-
-table.Empty(list.GetForEdit(gsPref.."type"))
-if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-setProperties(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
-
-local function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
-  local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it
-  local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
-  local sT = tT[iT]; if(not sT) then return gsInvm end
-  local tN = list.GetForEdit(gsPref..sT) -- No edit though same here
-  local iN = math.Clamp(math.floor(tonumber(vN or 1)), 1, #tN)
-  return tostring(tN[iN] or gsInvm)
-end
 
 -- Send notification to client that something happened
 function TOOL:NotifyPlayer(sText, sType, ...)
@@ -141,6 +129,10 @@ end
 
 function TOOL:GetMaterialCash()
   return tostring(self:GetClientInfo("material_cash") or gsInvm)
+end
+
+function TOOL:GetMaterialInfo()
+  return tostring(self:GetClientInfo("material_info") or gsInvm)
 end
 
 function TOOL:GetGravity()
@@ -205,10 +197,9 @@ function TOOL:LeftClick(tr)
     return self:NotifyPlayer("Apply physics invalid", "ERROR", false) end
   local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
   if(mePly:KeyDown(IN_USE)) then -- Use the cached material
-    matprop = self:GetMaterialCash()  -- Read value from the convar
+    matprop = self:GetMaterialCash() -- Read value from the convar
   else -- Use the material provided by the client control panel
-    matprop = getMaterialInfo(self:GetClientNumber("material_type") or 0,
-                              self:GetClientNumber("material_name") or 0)
+    matprop = self:GetMaterialInfo() -- Read material info popylated by client
   end; DoPropSpawnedEffect(trEnt) -- Network the values for drawing when available and corect
   if(not self:IsMaterial(matprop)) then -- Check for a valid value
     return self:NotifyPlayer("Apply invalid: "..gsInvm, "ERROR", false) end
@@ -302,51 +293,77 @@ end
 -- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel)
   CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
-  local nY, pItem = 0 -- pItem is the current panel created
-          CPanel:SetName(getPhrase("tool."..gsTool..".name"))
-  pItem = CPanel:Help   (getPhrase("tool."..gsTool..".desc"))
+  local drmSkin, bNow, pItem = CPanel:GetSkin(), true -- pItem is the current panel created
+  pItem = CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
+  pItem = CPanel:Help   (language.GetPhrase("tool."..gsTool..".desc"))
 
   pItem = vgui.Create("ControlPresets", CPanel)
   pItem:SetPreset(gsTool)
   pItem:AddOption("Default", gtConvar)
   for key, val in pairs(table.GetKeys(gtConvar)) do pItem:AddConVar(val) end
   pItem:Dock(TOP); CPanel:AddItem(pItem)
-
-  local matprop = getMaterialInfo(GetConVar(gsTool.."_material_type"):GetInt(),
-                                  GetConVar(gsTool.."_material_name"):GetInt())
+  local iType = GetConVar(gsTool.."_material_type"):GetInt()
+  local iName = GetConVar(gsTool.."_material_name"):GetInt()
+  local matprop = getMaterialInfo(iType, iName)
     -- http://wiki.garrysmod.com/page/Category:DComboBox
   local tT = list.GetForEdit(gsPref.."type")
-  local pComboType = vgui.Create("DComboBox", CPanel)
+  local pComboType, pItem = CPanel:ComboBox(language.GetPhrase("tool."..gsTool..".material_type_con"))
         pComboType:Dock(TOP)
-        pComboType:SetSortItems(false)
         pComboType:SetTall(25)
-        pComboType:SetTooltip(getPhrase("tool."..gsTool..".material_type"))
-        pComboType:SetValue(getPhrase("tool."..gsTool..".material_type_def"))
-        for iT = 1, #tT do pComboType:AddChoice(tT[iT], iT) end
+        pComboType:SetSortItems(false)
+        pComboType:UpdateColours(drmSkin)
+        pComboType:SetTooltip(language.GetPhrase("tool."..gsTool..".material_type"))
+        pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_type"))
+        pComboType:SetValue(language.GetPhrase("tool."..gsTool..".material_type_def"))
+        for iT = 1, #tT do pComboType:AddChoice(tT[iT], iT, (iT == iType), "icon16/package.png") end
     -- http://wiki.garrysmod.com/page/Category:DComboBox
-  local pComboName = vgui.Create("DComboBox", CPanel)
+  local pComboName, pItem = CPanel:ComboBox(language.GetPhrase("tool."..gsTool..".material_name_con"))
         pComboName:Dock(TOP)
-        pComboName:SetSortItems(false)
         pComboName:SetTall(25)
-        pComboName:SetTooltip(getPhrase("tool."..gsTool..".material_name"))
-        pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def").." "..matprop)
-        pComboName.OnSelect = function(pnSelf, nInd, sVal, anyData)
-          RunConsoleCommand(gsTool.."_material_name", anyData) end
-  -- Material list selection
-  pComboType.OnSelect = function(pnSelf, nInd, sVal, anyData)
-    local iT = math.Clamp(anyData, 1, #tT)
-    local tN = list.GetForEdit(gsPref..tT[iT]); pComboName:Clear()
-    pComboName:SetValue(getPhrase("tool."..gsTool..".material_name_def"))
-    for iN = 1, #tN do pComboName:AddChoice(tN[iN], iN) end
-    RunConsoleCommand(gsTool.."_material_type", anyData)
+        pComboName:SetSortItems(false)
+        pComboName:UpdateColours(drmSkin)
+        pComboName:SetTooltip(language.GetPhrase("tool."..gsTool..".material_name"))
+        pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_name"))
+        pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def").." "..matprop)
+  -- It is called when material name is selected from the menu
+  function pComboName:OnSelect(nInd, sVal, vDat)
+    local nIdx = GetConVar(gsTool.."_material_type"):GetInt()
+    local sMat = getMaterialInfo(nIdx, vDat)
+    RunConsoleCommand(gsTool.."_material_name", vDat)
+    RunConsoleCommand(gsTool.."_material_info", sMat)
   end
-  CPanel:AddItem(pComboType)
-  CPanel:AddItem(pComboName)
+  -- Material list selection. Selects category and updates name list
+  function pComboType:OnSelect(nInd, sVal, vDat)
+    local iT = math.Clamp(vDat, 1, #tT)
+    local tN = list.GetForEdit(gsPref..tT[iT]); pComboName:Clear()
+    pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def"))
+    for iN = 1, #tN do
+      local bS = (bNow and (iN == iName) or false)
+      pComboName:AddChoice(tN[iN], iN, bS, "icon16/brick.png")
+    end
+    if(bNow) then bNow = false end -- Retest on panel creation
+    RunConsoleCommand(gsTool.."_material_type", iT)
+  end
+  -- Support copy via right click
+  function pComboType:DoRightClick()
+    local iD = self:GetSelectedID()
+    local vT = self:GetOptionText(iD)
+    local sV = tostring(vT or self:GetValue())
+    SetClipboardText(sV)
+  end
+  function pComboName:DoRightClick()
+    local iD = self:GetSelectedID()
+    local vT = self:GetOptionText(iD)
+    local sV = tostring(vT or self:GetValue())
+    SetClipboardText(sV)
+  end
 
-  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".gravity_toggle_con"), gsTool.."_gravity_toggle")
-          pItem:SetTooltip(getPhrase("tool."..gsTool..".gravity_toggle"))
-  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
-          pItem:SetTooltip(getPhrase("tool."..gsTool..".material_draw"))
-  pItem = CPanel:CheckBox (getPhrase("tool."..gsTool..".applyall_bone_con"), gsTool.."_applyall_bone")
-          pItem:SetTooltip(getPhrase("tool."..gsTool..".applyall_bone"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".gravity_toggle_con"), gsTool.."_gravity_toggle")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".gravity_toggle"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".material_draw_con"), gsTool.."_material_draw")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_draw"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".applyall_bone_con"), gsTool.."_applyall_bone")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".applyall_bone"))
+
+  pComboType:OnSelect(nil, nil, iType)
 end
