@@ -14,6 +14,9 @@ local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
 local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
+-- Send language definitions to the client to populate the menu
+local gtTrans = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
+for iD = 1, #gtTrans do AddCSLuaFile(gsFLng:format("", gtTrans[iD])) end
 
 if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Construction")
@@ -92,10 +95,6 @@ if(CLIENT) then
 
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
   setDatabase(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
-else
-  -- Send language definitions to the client to populate the menu
-  local gtTrans = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
-  for iD = 1, #gtTrans do AddCSLuaFile(gsFLng:format("", gtTrans[iD])) end
 end
 
 TOOL.ClientConVar = {
