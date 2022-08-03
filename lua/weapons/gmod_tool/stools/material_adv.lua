@@ -17,17 +17,21 @@ TOOL.ClientConVar = {
 }
 
 if(CLIENT) then
-	language.Add("tool."..gsTool..".category", "Render")
+  language.Add("tool."..gsTool..".category", "Render")
 
+  -- Global table for material count ( CLIENT )
+  gtMCount = {Name = "", Size = 0, Data = {}, Base = {}}
   --[[
    * Calculates the random material
    * sNam > List name ( wthout prefix )
    * sMat > Current material selected
+   * iCnt > Times for material to not repeat
   ]]
-  local function setMaterial(sNam, sMat)
+  function pickMaterial(sNam, sMat, iCnt)
     local ply = LocalPlayer()
     if(not ply) then return end
     if(not ply:IsValid()) then return end
+    local cnt = (iCnt or GetConVar(gsTool.."_randomize"):GetInt())
     local key = (sNam or GetConVar(gsTool.."_customset"):GetString())
     local mat = (sMat or GetConVar(gsTool.."_randommat"):GetString())
     if(sNam) then RunConsoleCommand(gsTool.."_customset", key) end
@@ -35,25 +39,39 @@ if(CLIENT) then
     local key = (key == gsMats) and gsMats or (gsPref..key)
     local set = list.GetForEdit(key)
     if(not (set and set[1])) then return end
-    local sid = tostring(os.time()):reverse()
-          sid = tonumber(sid:sub(1,6))
-    local top = #set; math.randomseed(sid)
-    local idx, cnt = math.random(top), 25
-    local new = set[idx] -- Index random
-    while(new == "" or new == mat) do
-      idx = math.random(top) -- Random
-      new = set[idx] -- Index random
-      if(new == "") then
-        table.remove(set, idx)
-        top = (top - 1)
-      end; cnt = (cnt - 1)
-      if(cnt <= 0) then break end
+    if(key ~= gtMCount.Name) then
+      gtMCount.Name = key
+      table.Empty(gtMCount.Base)
     end
-
-    RunConsoleCommand(gsTool.."_randommat", new)
+    if(cnt > 0) then
+      local sid = tostring(SysTime()):reverse()
+            sid = tonumber(sid:sub(1,6))
+      local top = #set; math.randomseed(sid)
+      local mxx = math.min(top, cnt)
+      local idx = math.random(1, top)
+      local new, brk = set[idx], (mxx + 15)
+      math.random(1, top); math.random(1, top)
+      if(gtMCount.Data[new]) then
+        while(gtMCount.Data[new]) do
+          brk = brk - 1 -- Brake the loop
+          idx = math.random(1, top) -- Random
+          new = set[idx] -- Index random
+          if(brk <= 0) then break end
+        end
+      end
+      if(gtMCount.Size >= mxx) then
+        gtMCount.Size = 0
+        table.Empty(gtMCount.Data)
+      end
+      gtMCount.Data[new] = true
+      gtMCount.Size = gtMCount.Size + 1
+      if(not gtMCount.Base[new]) then gtMCount.Base[new] = 1
+      else gtMCount.Base[new] = gtMCount.Base[new] + 1 end
+      RunConsoleCommand(gsTool.."_randommat", new)
+    end
   end
 
-  net.Receive(gsPref.."randomize", function() setMaterial() end)
+  net.Receive(gsPref.."randomize", function() pickMaterial() end)
 
   local function getTranslate(sT)
     local sN = gsFLng:format("", sT..".lua")
@@ -141,7 +159,7 @@ end
 duplicator.RegisterEntityModifier(gsTool, setMaterial)
 
 function TOOL:IsRandom()
-  return (self:GetClientNumber("randomize", 0) ~= 0)
+  return (self:GetClientNumber("randomize", 0) > 0)
 end
 
 -- Left click applies the random
@@ -205,9 +223,9 @@ function TOOL.BuildCPanel(CPanel)
   pItem:AddOption("Default", gtConvar)
   for key, val in pairs(table.GetKeys(gtConvar)) do pItem:AddConVar(val) end
   pItem:Dock(TOP); CPanel:AddItem(pItem)
-  -- Randomize applied material
-  pItem = CPanel:CheckBox(language.GetPhrase("tool."..gsTool..".random_con"), gsTool.."_randomize")
-  pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".random"))
+  -- Randomize applied material in amout of iterations
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".random_con"), gsTool.."_randomize", 0, 100, 0)
+  pItem:SetToolTip(language.GetPhrase("tool."..gsTool..".random")); pItem:SetDefaultValue(0)
   -- Read the current list string identifier
   local tT = list.GetForEdit(gsPref.."type")
   local sS, nT = GetConVar(gsTool.."_customset"):GetString(), #tT
@@ -249,7 +267,7 @@ function TOOL.BuildCPanel(CPanel)
     for iD = 1, #tN do local sM = tN[iD]
       pMater:AddMaterial(sM, sM)
     end
-    setMaterial(sC, sM)
+    pickMaterial(sC, sM)
     pMater:InvalidateChildren()
     CPanel:InvalidateChildren()
   end
