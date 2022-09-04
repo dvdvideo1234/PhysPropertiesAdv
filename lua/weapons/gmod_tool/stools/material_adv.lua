@@ -3,11 +3,6 @@ local gsTool = goTool.Mode -- Filled from file name
 local gsPref = gsTool.."_"
 local gsMats = "OverrideMaterials"
 local varLng = GetConVar("gmod_language")
-local gsFLng = ("%s"..gsTool.."/lang/%s")
-
--- Send language definitions to the client to populate the menu
-local gtTrans = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
-for iD = 1, #gtTrans do AddCSLuaFile(gsFLng:format("", gtTrans[iD])) end
 
 TOOL.ClientConVar = {
   ["randomize"] = 0,
@@ -17,6 +12,13 @@ TOOL.ClientConVar = {
 }
 
 if(CLIENT) then
+
+  TOOL.Information = {
+    { name = "left"  },
+    { name = "right" },
+    { name = "reload"}
+  }
+
   language.Add("tool."..gsTool..".category", "Render")
 
   -- Global table for material count ( CLIENT )
@@ -73,28 +75,6 @@ if(CLIENT) then
 
   net.Receive(gsPref.."randomize", function() pickMaterial() end)
 
-  local function getTranslate(sT)
-    local sN = gsFLng:format("", sT..".lua")
-    if(not file.Exists("lua/"..sN, "GAME")) then return nil end
-    local fT = CompileFile(sN); if(not fT) then -- Try to compile the UTF-8 translations
-      ErrorNoHalt(gsTool.."("..sT.."): [1] Compile error\n") return nil end
-    local bF, fF = pcall(fT); if(not bF) then -- Prepare the result function for return call
-      ErrorNoHalt(gsTool.."("..sT.."): [2] Prepare error: "..fF.."\n") return nil end
-    local bS, tS = pcall(fF, gsTool); if(not bS) then -- Create translation table
-      ErrorNoHalt(gsTool.."("..sT.."): [3] Create error: "..tS.."\n") return nil end
-    return tS -- If it all goes well it will return the translation hash phrase table
-  end
-
-  local function setTranslate(sT)
-    local tB, tC = getTranslate("en"); if(not tB) then
-      ErrorNoHalt(gsTool..": English missing\n") end
-    if(sT ~= "en") then tC = getTranslate(sT) end
-    for key, val in pairs(tB) do -- Loop english
-      local msg = (tC and (tC[key] or val) or val)
-      language.Add(key, msg) -- Apply the panel labels
-    end
-  end
-
   local function setDatabase(tF)
     if(tF and tF[1]) then
       local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
@@ -120,18 +100,11 @@ if(CLIENT) then
     end
   end
 
-	TOOL.Information = {
-		{ name = "left"  },
-		{ name = "right" },
-		{ name = "reload"}
-	}
-
-  -- Default translation string descriptions ( always english )
-  setTranslate(varLng:GetString())
-  -- listen for changes to the localify language and reload the tool's menu to update the localizations
+  -- Changes to the convar so reload the tool's menu to update the localizations
   cvars.RemoveChangeCallback(varLng:GetName(), gsPref.."lang")
-  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
-    local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
+  cvars.AddChangeCallback(varLng:GetName(), function(sN, vO, vN)
+    local cPanel = controlpanel.Get(goTool.Mode)
+    if(not IsValid(cPanel)) then return end
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsPref.."lang")
 

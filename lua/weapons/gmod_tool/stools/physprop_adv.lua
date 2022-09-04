@@ -8,40 +8,22 @@ local gnRadm, gsSdiv = (20*0.618), "#"
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
 local gnTacn = TEXT_ALIGN_CENTER
-local gsFLng = ("%s"..gsTool.."/lang/%s")
 local varLng = GetConVar("gmod_language")
 local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
 local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
--- Send language definitions to the client to populate the menu
-local gtTrans = file.Find(gsFLng:format("lua/", "*.lua"), "GAME")
-for iD = 1, #gtTrans do AddCSLuaFile(gsFLng:format("", gtTrans[iD])) end
-
 if(CLIENT) then
+
+  TOOL.Information = {
+    { name = "info", stage = 1},
+    { name = "left"  },
+    { name = "left_use", icon2 = "gui/e.png"},
+    { name = "right" },
+    { name = "reload"}
+  }
+
   language.Add("tool."..gsTool..".category", "Construction")
-
-  local function getTranslate(sT)
-    local sN = gsFLng:format("", sT..".lua")
-    if(not file.Exists("lua/"..sN, "GAME")) then return nil end
-    local fT = CompileFile(sN); if(not fT) then -- Try to compile the UTF-8 translations
-      ErrorNoHalt(gsTool.."("..sT.."): [1] Compile error\n") return nil end
-    local bF, fF = pcall(fT); if(not bF) then -- Prepare the result function for return call
-      ErrorNoHalt(gsTool.."("..sT.."): [2] Prepare error: "..fF.."\n") return nil end
-    local bS, tS = pcall(fF, gsTool); if(not bS) then -- Create translation table
-      ErrorNoHalt(gsTool.."("..sT.."): [3] Create error: "..tS.."\n") return nil end
-    return tS -- If it all goes well it will return the translation hash phrase table
-  end
-
-  local function setTranslate(sT)
-    local tB, tC = getTranslate("en"); if(not tB) then
-      ErrorNoHalt(gsTool..": English missing\n") end
-    if(sT ~= "en") then tC = getTranslate(sT) end
-    for key, val in pairs(tB) do -- Loop english
-      local msg = (tC and (tC[key] or val) or val)
-      language.Add(key, msg) -- Apply the panel labels
-    end
-  end
 
   local function setDatabase(tF)
     if(tF and tF[1]) then
@@ -77,19 +59,11 @@ if(CLIENT) then
     return tostring(tN[iN] or gsInvm)
   end
 
-  TOOL.Information = {
-    { name = "info", stage = 1},
-    { name = "left"  },
-    { name = "left_use", icon2 = "gui/e.png"},
-    { name = "right" },
-    { name = "reload"}
-  }
-  -- Default translation string descriptions ( always english )
-  setTranslate(varLng:GetString())
-  -- listen for changes to the localify language and reload the tool's menu to update the localizations
+  -- Changes to the convar so reload the tool's menu to update the localizations
   cvars.RemoveChangeCallback(varLng:GetName(), gsPref.."lang")
-  cvars.AddChangeCallback(varLng:GetName(), function(sNam, vO, vN) setTranslate(vN)
-    local cPanel = controlpanel.Get(goTool.Mode); if(not IsValid(cPanel)) then return end
+  cvars.AddChangeCallback(varLng:GetName(), function(sN, vO, vN)
+    local cPanel = controlpanel.Get(goTool.Mode)
+    if(not IsValid(cPanel)) then return end
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsPref.."lang")
 
