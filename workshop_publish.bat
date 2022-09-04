@@ -18,7 +18,7 @@ set gmadBinPath=F:\Games\Steam\steamapps\common\GarrysMod\bin
 set gmadADTools=%gmadRevPath%data\physprop_adv\tools
 set "gmadTime=%date% %time%"
 set gmadID=2011328556
-set gmadDirs=(lua)
+set gmadDirs=(lua resource)
 set gmadLogs=
 set gmadCRLF=^
 
