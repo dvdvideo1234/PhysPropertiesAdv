@@ -14,6 +14,7 @@ local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
 if(CLIENT) then
+  language.Add("tool."..gsTool..".category", "Construction")
 
   TOOL.Information = {
     { name = "info", stage = 1},
@@ -22,8 +23,6 @@ if(CLIENT) then
     { name = "right" },
     { name = "reload"}
   }
-
-  language.Add("tool."..gsTool..".category", "Construction")
 
   local function setDatabase(tF)
     if(tF and tF[1]) then

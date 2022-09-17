@@ -12,14 +12,13 @@ TOOL.ClientConVar = {
 }
 
 if(CLIENT) then
+  language.Add("tool."..gsTool..".category", "Render")
 
   TOOL.Information = {
     { name = "left"  },
     { name = "right" },
     { name = "reload"}
   }
-
-  language.Add("tool."..gsTool..".category", "Render")
 
   -- Global table for material count ( CLIENT )
   gtMCount = {Name = "", Size = 0, Data = {}, Base = {}}
