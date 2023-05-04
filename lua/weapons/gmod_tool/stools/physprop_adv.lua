@@ -68,6 +68,19 @@ if(CLIENT) then
 
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
   setDatabase(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
+
+  net.Receive(gsTool.."SendImpactMaterial", function(iLen)
+    local oEnt = net.ReadEntity()
+    if(not (oEnt and oEnt:IsValid())) then return end
+    local sMat = net.ReadString()
+    local oPhy = oEnt:GetPhysicsObject()
+    print(10, iLen, oEnt, sMat, oPhy)
+    if(not (oPhy and oPhy:IsValid())) then return end
+    print(11, iLen, oEnt, sMat)
+    oPhy:SetMaterial(sMat)
+  end)
+else
+  util.AddNetworkString(gsTool.."SendImpactMaterial")
 end
 
 TOOL.ClientConVar = {
@@ -156,8 +169,18 @@ function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
     for iD = 0, (mBone - 1) do -- Apply the material on all bones
       construct.SetPhysProp(ePly, oEnt, iD, nil, tSet)
     end
-  else local iBone = (tonumber(iBone) or 0)
+  else
+    PrintTable(ePly:GetEyeTrace())
+    local iBone = (tonumber(iBone) or 0)
     construct.SetPhysProp(ePly, oEnt, iBone, nil, tSet)
+    net.Start(gsTool.."SendImpactMaterial")
+      net.WriteEntity(oEnt)
+      net.WriteString(sMat)
+    net.Send(ePly)
+    local oPhy = oEnt:GetPhysicsObject(); if(not (oPhy and oPhy:IsValid())) then
+      return self:NotifyPlayer("Request physics invalid", "ERROR", mBone) end
+    oPhy:SetMaterial(sMat)
+    print("SV", oEnt, oPhy, sMat)
   end; return mBone
 end
 
