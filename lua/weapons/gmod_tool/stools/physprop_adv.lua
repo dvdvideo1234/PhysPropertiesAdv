@@ -7,11 +7,27 @@ local gclBox = Color(250, 250, 200, 255)
 local gnRadm, gsSdiv = (20*0.618), "#"
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
+local gsPhmr = "UpdatePhysicsObjectTransformMaterialAdv"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
 local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
+local gtNotf = {["GENERIC"] = NOTIFY_GENERIC, ["ERROR"] = NOTIFY_ERROR,
+                ["UNDO"]    = NOTIFY_UNDO   , ["HINT"]  = NOTIFY_HINT , ["CLEANUP"] = NOTIFY_CLEANUP}
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
+
+-- Send notification to client that something happened
+local function NotifyPlayer(oPly, sText, sType, ...)
+  if(SERVER) then
+    oPly:SendLua(gfNotf:format(sText, sType))
+    oPly:SendLua(gfSong:format(math.random(1, 4)))
+  else
+    local oPly = LocalPlayer()
+    local fSnd = "ambient/water/drip%d.wav"
+    GAMEMODE:AddNotify(sText, gtNotf[sType], 6)
+    surface.PlaySound(fSnd:format(math.random(1, 4)))
+  end; return ...
+end
 
 if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Construction")
@@ -23,6 +39,16 @@ if(CLIENT) then
     { name = "right" },
     { name = "reload"}
   }
+
+  hook.Remove("Think", gsPref..gsPhmr)
+  hook.Add("Think", gsPref..gsPhmr, function()
+    local tE = ents.GetAll()
+    for iD = 1, #tE do local oE = tE[iD]
+      if(IsValid(oE) and oE[gsPhmr]) then
+        oE[gsPhmr](oE)
+      end
+    end
+  end)
 
   local function setDatabase(tF)
     if(tF and tF[1]) then
@@ -66,31 +92,50 @@ if(CLIENT) then
     cPanel:ClearControls(); goTool.BuildCPanel(cPanel)
   end, gsPref.."lang")
 
+  -- Force creating the needed folders
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-  setDatabase(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
+
+   -- Search for text files and load the materials when presnt
+  setDatabase(file.Find(gsTool.."/materials/*.txt","DATA"))
 
   net.Receive(gsTool.."SendImpactMaterial", function(iLen)
-    local oEnt = net.ReadEntity()
-    if(not (oEnt and oEnt:IsValid())) then return end
-    local sMat = net.ReadString()
-    local oPhy = oEnt:GetPhysicsObject()
-    print(10, iLen, oEnt, sMat, oPhy)
-    if(not (oPhy and oPhy:IsValid())) then return end
-    print(11, iLen, oEnt, sMat)
+    local oEnt, sMat, iBone = net.ReadEntity(), net.ReadString(), net.ReadUInt(16)
+    if(not IsValid(oEnt)) then
+      return NotifyPlayer(nil, "Impact ["..sMat.."] entity invalid", "ERROR") end
+    oEnt:PhysicsInit(SOLID_VPHYSICS)
+    oEnt:SetMoveType(MOVETYPE_VPHYSICS)
+    oEnt:SetSolid(SOLID_VPHYSICS)
+    oEnt:SetCollisionGroup(COLLISION_GROUP_INTERACTIVE)
+    oEnt:PhysWake() -- Wake the physmodel on the client
+    local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
+      return NotifyPlayer(nil, "Impact ["..sMat.."] physics invalid", "ERROR") end
+    oPhy:SetPos(oEnt:GetPos())
+    oPhy:SetAngles(oEnt:GetAngles())
     oPhy:SetMaterial(sMat)
+    if(not oEnt[gsPhmr]) then
+      oEnt[gsPhmr] = function(oE)
+        local oP = oE:GetPhysicsObject()
+        if(IsValid(oP)) then
+          oP:EnableMotion(false)
+          oP:SetPos(oE:GetPos())
+          oP:SetAngles(oE:GetAngles())
+        end
+      end
+    end
   end)
 else
   util.AddNetworkString(gsTool.."SendImpactMaterial")
 end
 
 TOOL.ClientConVar = {
-  [ "gravity_toggle" ] = 1,
-  [ "applyall_bone"  ] = 1,
-  [ "material_type"  ] = 1,
-  [ "material_name"  ] = 1,
-  [ "material_draw"  ] = 1,
-  [ "material_info"  ] = gsInvm,
-  [ "material_cash"  ] = gsInvm
+  [ "gravity_toggle"] = 1,
+  [ "applyall_bone" ] = 1,
+  [ "material_type" ] = 1,
+  [ "material_name" ] = 1,
+  [ "material_draw" ] = 1,
+  [ "physics_trans" ] = 0,
+  [ "material_info" ] = gsInvm,
+  [ "material_cash" ] = gsInvm
 }
 
 local gtConvar = TOOL:BuildConVarList()
@@ -100,12 +145,8 @@ TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
--- Send notification to client that something happened
-function TOOL:NotifyPlayer(sText, sType, ...)
-  if(SERVER) then local mePly = self:GetOwner()
-    mePly:SendLua(gfNotf:format(sText, sType))
-    mePly:SendLua(gfSong:format(math.random(1, 4)))
-  end; return ...
+function TOOL:NotifyPlayer(...)
+  return NotifyPlayer(self:GetOwner(), ...)
 end
 
 function TOOL:IsMaterial(sMat)
@@ -114,6 +155,10 @@ end
 
 function TOOL:GetMaterialDraw()
   return ((self:GetClientNumber("material_draw") or 0) ~= 0)
+end
+
+function TOOL:GetPhysicsTransfer()
+  return ((self:GetClientNumber("physics_trans") or 0) ~= 0)
 end
 
 function TOOL:GetMaterialCash()
@@ -160,8 +205,8 @@ function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
 end
 
 function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
-  local mBone = 0; if(not (oEnt and oEnt:IsValid())) then
-    return self:NotifyPlayer("Request entity invalid", "ERROR", mBone) end
+  local mBone = 0; if(not IsValid(oEnt)) then
+    return self:NotifyPlayer("Request ["..sMat.."] entity invalid", "ERROR", mBone) end
   self:PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
   local ePly, bBone = self:GetOwner(), self:GetApplyBones()
   local tSet, mBone = {Material = sMat, GravityToggle = bGrv}, 1
@@ -170,18 +215,20 @@ function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
       construct.SetPhysProp(ePly, oEnt, iD, nil, tSet)
     end
   else
-    PrintTable(ePly:GetEyeTrace())
     local iBone = (tonumber(iBone) or 0)
     construct.SetPhysProp(ePly, oEnt, iBone, nil, tSet)
-    net.Start(gsTool.."SendImpactMaterial")
-      net.WriteEntity(oEnt)
-      net.WriteString(sMat)
-    net.Send(ePly)
-    local oPhy = oEnt:GetPhysicsObject(); if(not (oPhy and oPhy:IsValid())) then
-      return self:NotifyPlayer("Request physics invalid", "ERROR", mBone) end
-    oPhy:SetMaterial(sMat)
-    print("SV", oEnt, oPhy, sMat)
-  end; return mBone
+  end
+  if(not self:GetPhysicsTransfer()) then return mBone end
+  local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
+    return self:NotifyPlayer("Request ["..sMat.."] physics invalid", "ERROR", mBone) end
+  oEnt:PhysWake() oPhy:SetMaterial(sMat)
+  -- Send message
+  net.Start(gsTool.."SendImpactMaterial")
+    net.WriteEntity(oEnt)
+    net.WriteString(sMat)
+    net.WriteUInt(iBone, 16)
+  net.Send(ePly)
+  return mBone
 end
 
 function TOOL:LeftClick(tr)
@@ -189,7 +236,7 @@ function TOOL:LeftClick(tr)
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   -- Make sure we do not apply custom physical properties on the world surface
   local trEnt, trBone = tr.Entity, tr.PhysicsBone
-  if(not (trEnt and trEnt:IsValid())) then return false end
+  if(not IsValid(trEnt)) then return false end
   if(trEnt:IsPlayer()) then return false end
   -- Make sure there is a physics object to manipulate
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
@@ -252,14 +299,14 @@ function TOOL:Think()
   local oTr   = mePly:GetEyeTrace()
   if(not (oTr and oTr.Hit)) then return nil end
   local trEnt, trBone, trSurf = oTr.Entity, oTr.PhysicsBone, oTr.SurfaceProps
-  if(not ((trEnt and trEnt:IsValid()) or oTr.HitWorld)) then return nil end
+  if(not (IsValid(trEnt) or oTr.HitWorld)) then return nil end
   if(SERVER) then gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
     if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK) or mePly:KeyDown(IN_RELOAD)) then
       self:PutOriginal(trEnt, (trSurf and util.GetSurfacePropName(trSurf) or gsInvm))
       -- Update the player vision for the entity
       for iB = 0, (trEnt:GetPhysicsObjectCount() - 1) do
         local phEnt = trEnt:GetPhysicsObjectNum(iB)
-        if(phEnt and phEnt:IsValid()) then
+        if(IsValid(phEnt)) then
           local matprop = phEnt:GetMaterial()
           local gravity = phEnt:IsGravityEnabled()
           self:SetBoneView(mePly, iB, matprop, gravity)
@@ -274,7 +321,7 @@ function TOOL:DrawHUD(w, h)
   local mePly = LocalPlayer()
   local oTr = mePly:GetEyeTrace()
   local trEnt, iB = oTr.Entity, oTr.PhysicsBone
-  if(not (trEnt and trEnt:IsValid())) then return end
+  if(not IsValid(trEnt)) then return end
   local sNw, bNw = self:GetBoneView(mePly, iB)
   if(not self:IsMaterial(sNw)) then return end
   local xyP = oTr.HitPos:ToScreen(); xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
@@ -363,6 +410,8 @@ function TOOL.BuildCPanel(CPanel)
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".material_draw"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".applyall_bone_con"), gsTool.."_applyall_bone")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".applyall_bone"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".physics_trans_con"), gsTool.."_physics_trans")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".physics_trans"))
 
   pComboType:OnSelect(nil, nil, iType)
 end
