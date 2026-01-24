@@ -28,7 +28,7 @@ if(CLIENT) then
    * sMat > Current material selected
    * iCnt > Times for material to not repeat
   ]]
-  function pickMaterial(sNam, sMat, iCnt)
+  function PickMatVisuals(sNam, sMat, iCnt)
     local ply = LocalPlayer()
     if(not ply) then return end
     if(not ply:IsValid()) then return end
@@ -72,9 +72,9 @@ if(CLIENT) then
     end
   end
 
-  net.Receive(gsPref.."randomize", function() pickMaterial() end)
+  net.Receive(gsPref.."randomize", function() PickMatVisuals() end)
 
-  local function setDatabase(tF)
+  local function SetDatabaseInfo(tF)
     if(tF and tF[1]) then
       local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
       local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
@@ -108,7 +108,7 @@ if(CLIENT) then
   end, gsPref.."lang")
 
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
-  setDatabase(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
+  SetDatabaseInfo(file.Find(gsTool.."/materials/*.txt","DATA")) -- Search for text files
 else
   util.AddNetworkString(gsPref.."randomize")
 end
@@ -120,7 +120,7 @@ TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
 
-local function setMaterial(oPly, oEnt, tData)
+local function SetMatVisuals(oPly, oEnt, tData)
   if(CLIENT) then return true end
   if(not (game.SinglePlayer() or tData.MaterialOverride == "")) then return end
   oEnt:SetMaterial(tData.MaterialOverride)
@@ -128,7 +128,7 @@ local function setMaterial(oPly, oEnt, tData)
   return true
 end
 
-duplicator.RegisterEntityModifier(gsTool, setMaterial)
+duplicator.RegisterEntityModifier(gsTool, SetMatVisuals)
 
 function TOOL:IsRandom()
   return (self:GetClientNumber("randomize", 0) > 0)
@@ -144,11 +144,11 @@ function TOOL:LeftClick(trace)
     if(not key or key == "") then return false end
     net.Start(gsPref.."randomize"); net.Send(ply)
     local mat = self:GetClientInfo("randommat")
-    setMaterial(ply, ent, {MaterialOverride = mat})
+    SetMatVisuals(ply, ent, {MaterialOverride = mat})
     return true
   else
     local mat = self:GetClientInfo("override")
-    setMaterial(ply, ent, {MaterialOverride = mat})
+    SetMatVisuals(ply, ent, {MaterialOverride = mat})
   end
   return true
 end
@@ -171,11 +171,11 @@ function TOOL:Reload(trace)
   if(IsValid(ent.AttachedEntity)) then ent = ent.AttachedEntity end
   if(not IsValid(ent)) then return false end -- Entity invalid
   if(not IsValid(ply)) then return false end -- Player invalid
-  setMaterial(ply, ent, {MaterialOverride = ""})
+  SetMatVisuals(ply, ent, {MaterialOverride = ""})
   return true
 end
 
-function wipeMaterials(pMat)
+function WipeMaterials(pMat)
   for k, v in pairs(pMat.Controls) do
     v:Remove(); pMat.Controls[k] = nil
   end; pMat.List:CleanList()
@@ -234,12 +234,12 @@ function TOOL.BuildCPanel(CPanel)
     local iT = math.Clamp(vDat, 0, #tT)
     local sC = ((iT == 0) and gsMats or tT[iT])
     local sN = ((iT == 0) and gsMats or (gsPref..tT[iT]))
-    wipeMaterials(pMater)
+    WipeMaterials(pMater)
     local tN = list.GetForEdit(sN)
     for iD = 1, #tN do local sM = tN[iD]
       pMater:AddMaterial(sM, sM)
     end
-    pickMaterial(sC, sM)
+    PickMatVisuals(sC, sM)
     pMater:InvalidateChildren()
     CPanel:InvalidateChildren()
   end

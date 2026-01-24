@@ -50,7 +50,7 @@ if(CLIENT) then
     end
   end)
 
-  local function setDatabase(tF)
+  local function SetDatabaseInfo(tF)
     if(tF and tF[1]) then
       local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
       local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
@@ -75,7 +75,7 @@ if(CLIENT) then
     end
   end
 
-  function getMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
+  function GetMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
     local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it
     local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
     local sT = tT[iT]; if(not sT) then return gsInvm end
@@ -96,7 +96,7 @@ if(CLIENT) then
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
 
    -- Search for text files and load the materials when presnt
-  setDatabase(file.Find(gsTool.."/materials/*.txt","DATA"))
+  SetDatabaseInfo(file.Find(gsTool.."/materials/*.txt","DATA"))
 
   net.Receive(gsTool.."SendImpactMaterial", function(iLen)
     local oEnt, sMat, iBone = net.ReadEntity(), net.ReadString(), net.ReadUInt(16)
@@ -127,6 +127,25 @@ else
   util.AddNetworkString(gsTool.."SendImpactMaterial")
 end
 
+local function IsMaterial(sMat)
+  return (sMat:len() > 0 and sMat ~= gsInvm)
+end
+
+function GetOriginal(oEnt)
+  return oEnt:GetNWString(gsPref.."matorig", gsInvm)
+end
+
+function SetOriginal(oEnt, sOrg)
+  oEnt:SetNWString(gsPref.."matorig", sOrg)
+end
+
+function PutOriginal(trEnt, sOrg)
+  local sMat, bMat = GetOriginal(trEnt), IsMaterial(sOrg)
+  if(bMat and sMat == gsInvm) then -- Original is not yet set
+    SetOriginal(trEnt, sOrg); return true -- Store original material
+  end; return false
+end
+
 TOOL.ClientConVar = {
   [ "gravity_toggle"] = 1,
   [ "applyall_bone" ] = 1,
@@ -144,14 +163,6 @@ TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil -- Command on click (nil for default)
 TOOL.ConfigName = nil -- Configure file name (nil for default)
-
-function TOOL:NotifyPlayer(...)
-  return NotifyPlayer(self:GetOwner(), ...)
-end
-
-function TOOL:IsMaterial(sMat)
-  return (sMat:len() > 0 and sMat ~= gsInvm)
-end
 
 function TOOL:GetMaterialDraw()
   return ((self:GetClientNumber("material_draw") or 0) ~= 0)
@@ -177,21 +188,6 @@ function TOOL:GetApplyBones()
   return ((self:GetClientNumber("applyall_bone") or 0) ~= 0)
 end
 
-function TOOL:GetOriginal(trEnt)
-  return trEnt:GetNWString(gsPref.."matorig", gsInvm)
-end
-
-function TOOL:SetOriginal(trEnt, sOrg)
-  trEnt:SetNWString(gsPref.."matorig", sOrg)
-end
-
-function TOOL:PutOriginal(trEnt, sOrg)
-  local sMat, bMat = self:GetOriginal(trEnt), self:IsMaterial(sOrg)
-  if(bMat and sMat == gsInvm) then -- Original is not yet set
-    self:SetOriginal(trEnt, sOrg); return true -- Store original material
-  end; return false
-end
-
 function TOOL:GetBoneView(oPly, iD)
   local tInf = gsSdiv:Explode(oPly:GetNWString(gsPref..iD, gsInvm))
   local sMat = tostring(tInf[1] or gsInvm):Trim()
@@ -204,60 +200,75 @@ function TOOL:SetBoneView(oPly, iD, sMat, bGrv)
   oPly:SetNWString(gsPref..iD, sMat..gsSdiv..(bGrv and 1 or 0))
 end
 
-function TOOL:SetMaterialProp(oEnt, iBone, sMat, bGrv)
-  local mBone = 0; if(not IsValid(oEnt)) then
-    return self:NotifyPlayer("Request ["..sMat.."] entity invalid", "ERROR", mBone) end
-  self:PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
-  local ePly, bBone = self:GetOwner(), self:GetApplyBones()
-  local tSet, mBone = {Material = sMat, GravityToggle = bGrv}, 1
-  if(bBone) then mBone = oEnt:GetPhysicsObjectCount()
+function TOOL:GetMaterialData(trBone, sMatProp)
+  local tData = {}
+  tData["bBone"] = self:GetApplyBones()
+  tData["bPhys"] = self:GetPhysicsTransfer()
+  tData["bGrav"] = self:GetGravity()
+  tData["sMatP"] = tostring(sMatProp or "")
+  tData["rBone"] = math.floor(tonumber(trBone) or 0)
+  return tData
+end
+
+function SetMaterialProp(oPly, oEnt, tData)
+  local sMat , bGrv  = tData["sMatP"], tData["bGrav"]
+  local bBone, bPhys = tData["bBone"], tData["bPhys"]
+  if(not IsValid(oEnt)) then -- Entity is invalid. Skip processing
+    return NotifyPlayer(oPly, "Request ["..sMat.."] entity invalid", "ERROR", mBone) end
+  duplicator.StoreEntityModifier(oEnt, gsTool, tData)
+  PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
+  local tSet = {Material = sMat, GravityToggle = bGrv}
+  local mBone = (bBone and oEnt:GetPhysicsObjectCount() or 1)
+  if(bBone) then -- Bone modifier is enabled. Configure bones
     for iD = 0, (mBone - 1) do -- Apply the material on all bones
-      construct.SetPhysProp(ePly, oEnt, iD, nil, tSet)
+      construct.SetPhysProp(oPly, oEnt, iD, nil, tSet)
     end
-  else
-    local iBone = (tonumber(iBone) or 0)
-    construct.SetPhysProp(ePly, oEnt, iBone, nil, tSet)
+  else -- Configure only entity itself
+    construct.SetPhysProp(oPly, oEnt, mBone, nil, tSet)
   end
-  if(not self:GetPhysicsTransfer()) then return mBone end
+  if(not bPhys) then return mBone end
   local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
-    return self:NotifyPlayer("Request ["..sMat.."] physics invalid", "ERROR", mBone) end
+    return NotifyPlayer(oPly, "Request ["..sMat.."] physics invalid", "ERROR", mBone) end
   oEnt:PhysWake() oPhy:SetMaterial(sMat)
   -- Send message
   net.Start(gsTool.."SendImpactMaterial")
     net.WriteEntity(oEnt)
     net.WriteString(sMat)
-    net.WriteUInt(iBone, 16)
-  net.Send(ePly)
+    net.WriteUInt(mBone, 16)
+  net.Send(oPly)
   return mBone
 end
+
+duplicator.RegisterEntityModifier(gsTool, SetMaterialProp)
 
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   -- Make sure we do not apply custom physical properties on the world surface
-  local trEnt, trBone = tr.Entity, tr.PhysicsBone
+  local trEnt, trBone, mePly = tr.Entity, tr.PhysicsBone, self:GetOwner()
   if(not IsValid(trEnt)) then return false end
   if(trEnt:IsPlayer()) then return false end
   -- Make sure there is a physics object to manipulate
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
-    return self:NotifyPlayer("Apply physics invalid", "ERROR", false) end
-  local mePly, gravity, matprop = self:GetOwner(), self:GetGravity()
+    return NotifyPlayer("Apply physics invalid", "ERROR", false) end
+  local mePly, matprop = self:GetOwner(), ""
   if(mePly:KeyDown(IN_USE)) then -- Use the cached material
     matprop = self:GetMaterialCash() -- Read value from the convar
   else -- Use the material provided by the client control panel
     matprop = self:GetMaterialInfo() -- Read material info popylated by client
   end; DoPropSpawnedEffect(trEnt) -- Network the values for drawing when available and corect
-  if(not self:IsMaterial(matprop)) then -- Check for a valid value
-    return self:NotifyPlayer("Apply invalid: "..gsInvm, "ERROR", false) end
+  if(not IsMaterial(matprop)) then -- Check for a valid value
+    return NotifyPlayer(mePly, "Apply invalid: "..gsInvm, "ERROR", false) end
+  local tData = self:GetMaterialData(trBone, matprop) -- Create tool data set for duping
   -- Finally apply the material on the seected entities
   if(mePly:KeyDown(IN_SPEED)) then local iBone, iEnts = 0, 0
     local tEnts = constraint.GetAllConstrainedEntities(trEnt)
     for key, ent in pairs(tEnts) do iEnts = iEnts + 1
-      iBone = iBone + self:SetMaterialProp(ent, trBone, matprop, gravity)
-    end; return self:NotifyPlayer("Apply ["..iBone.."] bones ["..iEnts.."] entities: "..matprop, "GENERIC", true)
+      iBone = iBone + SetMaterialProp(mePly, ent, tData)
+    end; return NotifyPlayer(mePly, "Apply ["..iBone.."] bones ["..iEnts.."] entities: "..matprop, "GENERIC", true)
   else -- Apply only to the trace bone
-    local iBone = self:SetMaterialProp(trEnt, trBone, matprop, gravity)
-    return self:NotifyPlayer("Apply ["..iBone.."] bones: "..matprop, "GENERIC", true)
+    local iBone = SetMaterialProp(mePly, trEnt, tData)
+    return NotifyPlayer(mePly, "Apply ["..iBone.."] bones: "..matprop, "GENERIC", true)
   end -- There are two glasses of water on the table. One if I am thursty and one if I'm not
 end
 
@@ -266,10 +277,10 @@ function TOOL:RightClick(tr)
   if(not (tr and tr.Hit)) then return false end
   local mePly, iP = self:GetOwner(), tr.SurfaceProps
   local matprop = (iP and util.GetSurfacePropName(iP) or gsInvm)
-  if(not self:IsMaterial(matprop)) then -- Check for a valid value
-    return self:NotifyPlayer("Cache invalid: "..gsInvm, "ERROR", false) end
+  if(not IsMaterial(matprop)) then -- Check for a valid value
+    return NotifyPlayer(mePly, "Cache invalid: "..gsInvm, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
-  return self:NotifyPlayer("Cache material: "..matprop, "UNDO", true)
+  return NotifyPlayer(mePly, "Cache material: "..matprop, "UNDO", true)
 end
 
 function TOOL:Reload(tr)
@@ -278,19 +289,21 @@ function TOOL:Reload(tr)
   local trEnt, trBone = tr.Entity, tr.PhysicsBone
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
-    return self:NotifyPlayer("Reset physics invalid", "ERROR", false) end
+    return NotifyPlayer(mePly, "Reset physics invalid", "ERROR", false) end
   if(mePly:KeyDown(IN_SPEED)) then local iBone, iEnts = 0, 0
     local tEnts = constraint.GetAllConstrainedEntities(trEnt)
     for key, ent in pairs(tEnts) do iEnts = iEnts + 1
-      local matprop = self:GetOriginal(ent); if(not self:IsMaterial(matprop)) then
-        return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
-      iBone = iBone + self:SetMaterialProp(ent, trBone, matprop)
-    end; return self:NotifyPlayer("Reset ["..iBone.."] bones ["..iEnts.."] entities", "CLEANUP", true)
+      local matprop = GetOriginal(ent); if(not IsMaterial(matprop)) then
+        return NotifyPlayer(mePly, "Reset invalid: "..gsInvm, "ERROR", false) end
+      local tData = self:GetMaterialData(trBone, matprop)
+      iBone = iBone + SetMaterialProp(mePly,ent, tData)
+    end; return NotifyPlayer(mePly, "Reset ["..iBone.."] bones ["..iEnts.."] entities", "CLEANUP", true)
   else -- Reset only to the trace bone
-    local matprop = self:GetOriginal(trEnt); if(not self:IsMaterial(matprop)) then
-      return self:NotifyPlayer("Reset invalid: "..gsInvm, "ERROR", false) end
-    local iBone = self:SetMaterialProp(trEnt, trBone, matprop)
-    return self:NotifyPlayer("Reset ["..iBone.."] bones: "..matprop, "CLEANUP", true)
+    local matprop = GetOriginal(trEnt); if(not IsMaterial(matprop)) then
+      return NotifyPlayer(mePly, "Reset invalid: "..gsInvm, "ERROR", false) end
+    local tData = self:GetMaterialData(trBone, matprop)
+    local iBone = SetMaterialProp(mePly, trEnt, tData)
+    return NotifyPlayer(mePly, "Reset ["..iBone.."] bones: "..matprop, "CLEANUP", true)
   end
 end
 
@@ -302,7 +315,7 @@ function TOOL:Think()
   if(not (IsValid(trEnt) or oTr.HitWorld)) then return nil end
   if(SERVER) then gtTrig.Old, gtTrig.New = gtTrig.New, trEnt
     if(gtTrig.Old ~= gtTrig.New or mePly:KeyDown(IN_ATTACK) or mePly:KeyDown(IN_RELOAD)) then
-      self:PutOriginal(trEnt, (trSurf and util.GetSurfacePropName(trSurf) or gsInvm))
+      PutOriginal(trEnt, (trSurf and util.GetSurfacePropName(trSurf) or gsInvm))
       -- Update the player vision for the entity
       for iB = 0, (trEnt:GetPhysicsObjectCount() - 1) do
         local phEnt = trEnt:GetPhysicsObjectNum(iB)
@@ -323,12 +336,12 @@ function TOOL:DrawHUD(w, h)
   local trEnt, iB = oTr.Entity, oTr.PhysicsBone
   if(not IsValid(trEnt)) then return end
   local sNw, bNw = self:GetBoneView(mePly, iB)
-  if(not self:IsMaterial(sNw)) then return end
+  if(not IsMaterial(sNw)) then return end
   local xyP = oTr.HitPos:ToScreen(); xyP.x, xyP.y = (xyP.x + gnRadm), (xyP.y - gnRadm)
-  local mAt = getMaterialInfo(self:GetClientNumber("material_type") or 0,
+  local mAt = GetMaterialInfo(self:GetClientNumber("material_type") or 0,
                               self:GetClientNumber("material_name") or 0)
   local gRv = tostring(self:GetGravity()); surface.SetFont(gsFont)
-  local mAo = self:GetOriginal(trEnt); bNw = tostring(bNw) -- Original material
+  local mAo = GetOriginal(trEnt); bNw = tostring(bNw) -- Original material
   local sTx = "["..iB.."] { "..bNw.." | "..sNw.." } ( "..gRv.." | "..mAt.." ) "..mAo
   local tw, th = surface.GetTextSize(sTx)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 12, xyP.y - th/2 - 4, tw + 24, th + 8, gclBgn)
@@ -350,7 +363,7 @@ function TOOL.BuildCPanel(CPanel)
   pItem:Dock(TOP); CPanel:AddItem(pItem)
   local iType = GetConVar(gsTool.."_material_type"):GetInt()
   local iName = GetConVar(gsTool.."_material_name"):GetInt()
-  local matprop = getMaterialInfo(iType, iName)
+  local matprop = GetMaterialInfo(iType, iName)
     -- http://wiki.garrysmod.com/page/Category:DComboBox
   local tT = list.GetForEdit(gsPref.."type")
   local pComboType, pItem = CPanel:ComboBox(language.GetPhrase("tool."..gsTool..".material_type_con"))
@@ -374,7 +387,7 @@ function TOOL.BuildCPanel(CPanel)
   -- It is called when material name is selected from the menu
   function pComboName:OnSelect(nInd, sVal, vDat)
     local nIdx = GetConVar(gsTool.."_material_type"):GetInt()
-    local sMat = getMaterialInfo(nIdx, vDat)
+    local sMat = GetMaterialInfo(nIdx, vDat)
     RunConsoleCommand(gsTool.."_material_name", vDat)
     RunConsoleCommand(gsTool.."_material_info", sMat)
   end
