@@ -1,6 +1,6 @@
 local goTool = TOOL
 local gsTool = goTool.Mode
-local gsPref = "physicsal_props_adv_"
+local gsPref = gsTool.."_"
 local gclBgn = Color(0, 0, 0, 210)
 local gclTxt = Color(0, 0, 0, 255)
 local gclBox = Color(250, 250, 200, 255)
@@ -11,20 +11,25 @@ local gsPhmr = "UpdatePhysicsObjectTransformMaterialAdv"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 local gsSnds = "ambient/water/drip%d.wav"
-local gfNotf = "notification.AddLegacy(\"%s\", NOTIFY_%s, 6)"
-local gfSong = "surface.PlaySound(\""..gsSnds.."\")"
-local gtNotf = {["GENERIC"] = NOTIFY_GENERIC, ["ERROR"] = NOTIFY_ERROR,
-                ["UNDO"]    = NOTIFY_UNDO   , ["HINT"]  = NOTIFY_HINT , ["CLEANUP"] = NOTIFY_CLEANUP}
+local gfNotf = "notification.AddLegacy(\"%s\", %d, %d)"
+local gfSong = "surface.PlaySound(\"%s\")"
+local gtNotf = {["GENERIC"] = NOTIFY_GENERIC,
+                ["ERROR"]   = NOTIFY_ERROR  ,
+                ["UNDO"]    = NOTIFY_UNDO   ,
+                ["HINT"]    = NOTIFY_HINT   ,
+                ["CLEANUP"] = NOTIFY_CLEANUP}
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
 -- Send notification to client that something happened
 local function NotifyPlayer(oPly, sText, sType, ...)
+  local sSn = gfSong:format(math.random(1, 4))
+  local iNo, nTm = gtNotf[sType], 6
   if(SERVER) then
-    oPly:SendLua(gfNotf:format(sText, sType))
-    oPly:SendLua(gfSong:format(math.random(1, 4)))
+    oPly:SendLua(gfNotf:format(sText, iNo, nTm))
+    oPly:SendLua(sSn)
   else
-    notification.AddLegacy(sText, gtNotf[sType], 6)
-    surface.PlaySound(gsSnds:format(math.random(1, 4)))
+    notification.AddLegacy(sText, iNo, nTm)
+    surface.PlaySound(sSn)
   end; return ...
 end
 
@@ -249,7 +254,7 @@ function TOOL:LeftClick(tr)
   if(trEnt:IsPlayer()) then return false end
   -- Make sure there is a physics object to manipulate
   if(not util.IsValidPhysicsObject(trEnt, trBone)) then
-    return NotifyPlayer("Apply physics invalid", "ERROR", false) end
+    return NotifyPlayer(mePly, "Apply physics invalid", "ERROR", false) end
   local mePly, matprop = self:GetOwner(), ""
   if(mePly:KeyDown(IN_USE)) then -- Use the cached material
     matprop = self:GetMaterialCash() -- Read value from the convar

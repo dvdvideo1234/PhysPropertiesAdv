@@ -24,7 +24,7 @@ if(CLIENT) then
   gtMCount = {Name = "", Size = 0, Data = {}, Base = {}}
   --[[
    * Calculates the random material
-   * sNam > List name ( wthout prefix )
+   * sNam > List name ( without prefix )
    * sMat > Current material selected
    * iCnt > Times for material to not repeat
   ]]
