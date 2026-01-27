@@ -7,7 +7,8 @@ local gclBox = Color(250, 250, 200, 255)
 local gnRadm, gsSdiv = (20*0.618), "#"
 local gnRadr = (gnRadm-gnRadm%2)
 local gsFont = "Trebuchet24"
-local gsPhmr = "UpdatePhysicsObjectTransformMaterialAdv"
+local gsMaTy = "main-primary-types"
+local gsPhmr = "UpdateTransformPhysPropMaterialAdv"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
 local gsSnds = "ambient/water/drip%d.wav"
@@ -57,7 +58,7 @@ if(CLIENT) then
   local function SetDatabaseInfo(tF)
     if(tF and tF[1]) then
       local sR, sF, sE = "rb", (gsTool.."/materials/%s.txt"), ("%.txt") -- Path format
-      local sT, sM, sP, sD = (gsPref.."type"), ("*line"), ("%S+"), ("DATA")
+      local sT, sM, sP, sD = (gsPref..gsMaTy), ("*line"), ("%S+"), ("DATA")
       table.Empty(list.GetForEdit(sT)) -- Update the list with new values
       for iF = 1, #tF do local sN = tF[iF]:gsub(sE, "") -- Strip extension
         if(not list.Contains(sT, sN)) then list.Add(sT, sN) end
@@ -80,7 +81,7 @@ if(CLIENT) then
   end
 
   function GetMaterialInfo(vT, vN) -- Avoid returning a copy by list-get to make it faster
-    local tT = list.GetForEdit(gsPref.."type") -- No edit though just read it
+    local tT = list.GetForEdit(gsPref..gsMaTy) -- No edit though just read it
     local iT = math.Clamp(math.floor(tonumber(vT or 1)), 1, #tT)
     local sT = tT[iT]; if(not sT) then return gsInvm end
     local tN = list.GetForEdit(gsPref..sT) -- No edit though same here
@@ -369,7 +370,7 @@ function TOOL.BuildCPanel(CPanel)
   local iName = GetConVar(gsTool.."_material_name"):GetInt()
   local matprop = GetMaterialInfo(iType, iName)
     -- http://wiki.garrysmod.com/page/Category:DComboBox
-  local tT = list.GetForEdit(gsPref.."type")
+  local tT = list.GetForEdit(gsPref..gsMaTy)
   local pComboType, pItem = CPanel:ComboBox(language.GetPhrase("tool."..gsTool..".material_type_con"))
         pComboType:Dock(TOP)
         pComboType:SetTall(25)
