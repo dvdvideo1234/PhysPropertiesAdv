@@ -184,7 +184,7 @@ end
 
 -- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel)
-  -- Tool name and desctiption
+  -- Tool name and description
   CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
   local drmSkin, pItem = CPanel:GetSkin() -- pItem is the current panel created
   pItem = CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
@@ -195,7 +195,7 @@ function TOOL.BuildCPanel(CPanel)
   pItem:AddOption("Default", gtConvar)
   for key, val in pairs(table.GetKeys(gtConvar)) do pItem:AddConVar(val) end
   pItem:Dock(TOP); CPanel:AddItem(pItem)
-  -- Randomize applied material in amout of iterations
+  -- Randomize applied material in amount of iterations
   pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".random_con"), gsTool.."_randomize", 0, 100, 0)
   pItem:SetToolTip(language.GetPhrase("tool."..gsTool..".random")); pItem:SetDefaultValue(0)
   -- Read the current list string identifier
@@ -212,7 +212,7 @@ function TOOL.BuildCPanel(CPanel)
     local sV = tostring(vT or self:GetValue())
     SetClipboardText(sV)
   end
-  pCombo:Dock(TOP) -- Setting tallness gets ingnored otherwise
+  pCombo:Dock(TOP) -- Setting tallness gets ignored otherwise
   pCombo:SetTall(25)
   pCombo:UpdateColours(drmSkin)
   pCombo:AddChoice(gsMats, 0, (sS == gsMats), "icon16/house.png")

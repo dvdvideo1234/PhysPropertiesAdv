@@ -10,8 +10,9 @@ local gsFont = "Trebuchet24"
 local gsPhmr = "UpdatePhysicsObjectTransformMaterialAdv"
 local gnTacn = TEXT_ALIGN_CENTER
 local varLng = GetConVar("gmod_language")
-local gfNotf = "GAMEMODE:AddNotify(\"%s\", NOTIFY_%s, 6)"
-local gfSong = "surface.PlaySound(\"ambient/water/drip%d.wav\")"
+local gsSnds = "ambient/water/drip%d.wav"
+local gfNotf = "notification.AddLegacy(\"%s\", NOTIFY_%s, 6)"
+local gfSong = "surface.PlaySound(\""..gsSnds.."\")"
 local gtNotf = {["GENERIC"] = NOTIFY_GENERIC, ["ERROR"] = NOTIFY_ERROR,
                 ["UNDO"]    = NOTIFY_UNDO   , ["HINT"]  = NOTIFY_HINT , ["CLEANUP"] = NOTIFY_CLEANUP}
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
@@ -22,10 +23,8 @@ local function NotifyPlayer(oPly, sText, sType, ...)
     oPly:SendLua(gfNotf:format(sText, sType))
     oPly:SendLua(gfSong:format(math.random(1, 4)))
   else
-    local oPly = LocalPlayer()
-    local fSnd = "ambient/water/drip%d.wav"
-    GAMEMODE:AddNotify(sText, gtNotf[sType], 6)
-    surface.PlaySound(fSnd:format(math.random(1, 4)))
+    notification.AddLegacy(sText, gtNotf[sType], 6)
+    surface.PlaySound(gsSnds:format(math.random(1, 4)))
   end; return ...
 end
 
@@ -95,7 +94,7 @@ if(CLIENT) then
   -- Force creating the needed folders
   if(not file.Exists(gsTool,"DATA")) then file.CreateDir(gsTool) end
 
-   -- Search for text files and load the materials when presnt
+   -- Search for text files and load the materials when present
   SetDatabaseInfo(file.Find(gsTool.."/materials/*.txt","DATA"))
 
   net.Receive(gsTool.."SendImpactMaterial", function(iLen)
@@ -106,7 +105,7 @@ if(CLIENT) then
     oEnt:SetMoveType(MOVETYPE_VPHYSICS)
     oEnt:SetSolid(SOLID_VPHYSICS)
     oEnt:SetCollisionGroup(COLLISION_GROUP_INTERACTIVE)
-    oEnt:PhysWake() -- Wake the physmodel on the client
+    oEnt:PhysWake() -- Wake the phys-model on the client
     local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
       return NotifyPlayer(nil, "Impact ["..sMat.."] physics invalid", "ERROR") end
     oPhy:SetPos(oEnt:GetPos())
@@ -131,20 +130,51 @@ local function IsMaterial(sMat)
   return (sMat:len() > 0 and sMat ~= gsInvm)
 end
 
-function GetOriginal(oEnt)
+local function GetOriginal(oEnt)
   return oEnt:GetNWString(gsPref.."matorig", gsInvm)
 end
 
-function SetOriginal(oEnt, sOrg)
+local function SetOriginal(oEnt, sOrg)
   oEnt:SetNWString(gsPref.."matorig", sOrg)
 end
 
-function PutOriginal(trEnt, sOrg)
+local function PutOriginal(trEnt, sOrg)
   local sMat, bMat = GetOriginal(trEnt), IsMaterial(sOrg)
   if(bMat and sMat == gsInvm) then -- Original is not yet set
     SetOriginal(trEnt, sOrg); return true -- Store original material
   end; return false
 end
+
+local function SetMaterialProp(oPly, oEnt, tData)
+  local sMat , bGrv  = tData["sMatP"], tData["bGrav"]
+  local bBone, bPhys = tData["bBone"], tData["bPhys"]
+  if(not IsValid(oEnt)) then -- Entity is invalid. Skip processing
+    return NotifyPlayer(oPly, "Request ["..sMat.."] entity invalid", "ERROR", mBone) end
+  duplicator.StoreEntityModifier(oEnt, gsTool, tData)
+  PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
+  local tSet = {Material = sMat, GravityToggle = bGrv}
+  local mBone = (bBone and oEnt:GetPhysicsObjectCount() or 1)
+  if(bBone) then -- Bone modifier is enabled. Configure bones
+    for iD = 0, (mBone - 1) do -- Apply the material on all bones
+      construct.SetPhysProp(oPly, oEnt, iD, nil, tSet)
+    end
+  else -- Configure only entity itself
+    construct.SetPhysProp(oPly, oEnt, mBone, nil, tSet)
+  end
+  if(not bPhys) then return mBone end
+  local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
+    return NotifyPlayer(oPly, "Request ["..sMat.."] physics invalid", "ERROR", mBone) end
+  oEnt:PhysWake() oPhy:SetMaterial(sMat)
+  -- Send message
+  net.Start(gsTool.."SendImpactMaterial")
+    net.WriteEntity(oEnt)
+    net.WriteString(sMat)
+    net.WriteUInt(mBone, 16)
+  net.Send(oPly)
+  return mBone
+end
+
+duplicator.RegisterEntityModifier(gsTool, SetMaterialProp)
 
 TOOL.ClientConVar = {
   [ "gravity_toggle"] = 1,
@@ -209,37 +239,6 @@ function TOOL:GetMaterialData(trBone, sMatProp)
   tData["rBone"] = math.floor(tonumber(trBone) or 0)
   return tData
 end
-
-function SetMaterialProp(oPly, oEnt, tData)
-  local sMat , bGrv  = tData["sMatP"], tData["bGrav"]
-  local bBone, bPhys = tData["bBone"], tData["bPhys"]
-  if(not IsValid(oEnt)) then -- Entity is invalid. Skip processing
-    return NotifyPlayer(oPly, "Request ["..sMat.."] entity invalid", "ERROR", mBone) end
-  duplicator.StoreEntityModifier(oEnt, gsTool, tData)
-  PutOriginal(oEnt, oEnt:GetBoneSurfaceProp(0))
-  local tSet = {Material = sMat, GravityToggle = bGrv}
-  local mBone = (bBone and oEnt:GetPhysicsObjectCount() or 1)
-  if(bBone) then -- Bone modifier is enabled. Configure bones
-    for iD = 0, (mBone - 1) do -- Apply the material on all bones
-      construct.SetPhysProp(oPly, oEnt, iD, nil, tSet)
-    end
-  else -- Configure only entity itself
-    construct.SetPhysProp(oPly, oEnt, mBone, nil, tSet)
-  end
-  if(not bPhys) then return mBone end
-  local oPhy = oEnt:GetPhysicsObject(); if(not IsValid(oPhy)) then
-    return NotifyPlayer(oPly, "Request ["..sMat.."] physics invalid", "ERROR", mBone) end
-  oEnt:PhysWake() oPhy:SetMaterial(sMat)
-  -- Send message
-  net.Start(gsTool.."SendImpactMaterial")
-    net.WriteEntity(oEnt)
-    net.WriteString(sMat)
-    net.WriteUInt(mBone, 16)
-  net.Send(oPly)
-  return mBone
-end
-
-duplicator.RegisterEntityModifier(gsTool, SetMaterialProp)
 
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end -- The client has nothing to do
