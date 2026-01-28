@@ -23,11 +23,11 @@ local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
 
 -- Send notification to client that something happened
 local function NotifyPlayer(oPly, sText, sType, ...)
-  local sSn = gfSong:format(math.random(1, 4))
+  local sSn = gsSnds:format(math.random(1, 4))
   local iNo, nTm = gtNotf[sType], 6
   if(SERVER) then
     oPly:SendLua(gfNotf:format(sText, iNo, nTm))
-    oPly:SendLua(sSn)
+    oPly:SendLua(gfSong:format(sSn))
   else
     notification.AddLegacy(sText, iNo, nTm)
     surface.PlaySound(sSn)
