@@ -14,17 +14,25 @@ local varLng = GetConVar("gmod_language")
 local gsSnds = "ambient/water/drip%d.wav"
 local gfNotf = "notification.AddLegacy(\"%s\", %d, %d)"
 local gfSong = "surface.PlaySound(\"%s\")"
-local gtNotf = {["GENERIC"] = NOTIFY_GENERIC,
-                ["ERROR"]   = NOTIFY_ERROR  ,
-                ["UNDO"]    = NOTIFY_UNDO   ,
-                ["HINT"]    = NOTIFY_HINT   ,
-                ["CLEANUP"] = NOTIFY_CLEANUP}
+local gtNotf = {["#"] = true}
 local gtTrig, gsInvm = {Old = 0, New = 0}, "N/A"
+
+local function GetNotify()
+  if(gtNotf["#"]) then
+    gtNotf["#"] = nil
+    gtNotf["GENERIC"] = NOTIFY_GENERIC
+    gtNotf["ERROR"]   = NOTIFY_ERROR
+    gtNotf["UNDO"]    = NOTIFY_UNDO
+    gtNotf["HINT"]    = NOTIFY_HINT
+    gtNotf["CLEANUP"] = NOTIFY_CLEANUP
+  end; return gtNotf
+end
 
 -- Send notification to client that something happened
 local function NotifyPlayer(oPly, sText, sType, ...)
+  local tNo = GetNotify()
   local sSn = gsSnds:format(math.random(1, 4))
-  local iNo, nTm = gtNotf[sType], 6
+  local iNo, nTm = tNo[sType], 6
   if(SERVER) then
     oPly:SendLua(gfNotf:format(sText, iNo, nTm))
     oPly:SendLua(gfSong:format(sSn))
